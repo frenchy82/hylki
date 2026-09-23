@@ -247,7 +247,7 @@ pub struct AccountConfig {
     /// SMTP password — kept in the keyring (separate entry), never on disk.
     #[serde(default, skip_serializing)]
     pub smtp_password: String,
-    /// Sidebar avatar background colour ("#rrggbb"). Falls back to the auto accent.
+    /// Sidebar avatar background color ("#rrggbb"). Falls back to the auto accent.
     #[serde(default)]
     pub color: Option<String>,
     /// Sidebar avatar emoji; when absent, the account-name initials are shown.
@@ -485,7 +485,7 @@ struct ConfigFile {
 }
 
 /// Demo mode's edited stand-in accounts (`~/.config/hylki/demo-accounts.toml`):
-/// what the Accounts panel changed on the sample accounts (colour, emoji,
+/// what the Accounts panel changed on the sample accounts (color, emoji,
 /// picture, label), kept apart from the real accounts file so the demo
 /// stays a demo. `None` when there is none, or it is empty.
 pub fn load_demo_accounts() -> Option<Vec<AccountConfig>> {
@@ -786,12 +786,13 @@ pub enum AppTheme {
 #[serde(rename_all = "kebab-case")]
 pub enum TrayIcon {
     /// The app icon.
-    #[default]
     Hylki,
-    /// The app's symbolic icon in white, for dark panels.
-    EnvelopeLight,
-    /// The app's symbolic icon in black, for light panels.
-    EnvelopeDark,
+    /// The app's symbolic icon, which the panel draws in its own color, as
+    /// it does the icons beside it (#258). It replaced a white and a black
+    /// envelope, which read as it.
+    #[default]
+    #[serde(alias = "envelope-light", alias = "envelope-dark")]
+    Symbolic,
 }
 
 /// How email message content is themed, independent of the app UI theme.
@@ -816,11 +817,11 @@ impl MessageTheme {
     }
 }
 
-/// The reader's own typography and colours, laid over the sender's (#56).
+/// The reader's own typography and colors, laid over the sender's (#56).
 ///
 /// What the reader applies: `font` is the Pango description to set mail in
 /// (`None` = the sender's fonts stand), `colors` forces the reader's own text
-/// and ground colours over the sender's. Built by the app from the three
+/// and ground colors over the sender's. Built by the app from the three
 /// stored preferences, with the interface font filled in where none was
 /// chosen, so the reader never has to ask GTK.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
@@ -828,7 +829,7 @@ pub struct ReaderStyle {
     /// Pango description ("Cantarell 11") of the font every message is set
     /// in; `None` leaves the sender's fonts and sizes alone.
     pub font: Option<String>,
-    /// Ignore the sender's text and background colours.
+    /// Ignore the sender's text and background colors.
     pub colors: bool,
     /// Pango description of the font plain-text messages are set in
     /// (#181); `None` leaves them in the reader's default.
@@ -886,7 +887,7 @@ struct PrivacyFile {
     /// a hash of each sender's email to a third party).
     #[serde(default)]
     gravatar: bool,
-    /// Whether the coloured avatars are drawn in the message list and the
+    /// Whether the colored avatars are drawn in the message list and the
     /// reader (#29 — they cost horizontal room on a small screen).
     #[serde(default = "default_avatars")]
     avatars: bool,
@@ -991,7 +992,7 @@ struct PrivacyFile {
     /// interface font.
     #[serde(default)]
     reader_font: String,
-    /// Ignore the sender's text and background colours (#56).
+    /// Ignore the sender's text and background colors (#56).
     #[serde(default)]
     override_colors: bool,
     /// Show plain-text messages in a monospace font (#181).
@@ -1130,7 +1131,7 @@ struct PrivacyFile {
     #[serde(default)]
     app_theme: AppTheme,
     /// The appearance theme's id: a bundled palette (see `theme.rs`) painted
-    /// over libadwaita's colours, or "system" for the stock GNOME look.
+    /// over libadwaita's colors, or "system" for the stock GNOME look.
     /// Empty — a file written before themes existed — means the same.
     #[serde(default)]
     theme: String,
@@ -1226,6 +1227,9 @@ struct PrivacyFile {
     /// ("brave-browser.desktop") launched directly.
     #[serde(default)]
     link_browser: String,
+    /// What the main window shows at launch (#256).
+    #[serde(default)]
+    start_view: StartView,
 }
 
 fn default_chevrons_left() -> bool {
@@ -1379,6 +1383,7 @@ impl Default for PrivacyFile {
             files_large: FilesLarge::default(),
             files_limit_mb: default_files_limit_mb(),
             link_browser: String::new(),
+            start_view: StartView::default(),
             gravatar: false,
             avatars: default_avatars(),
             own_mailbox_face: default_own_mailbox_face(),
@@ -1710,6 +1715,24 @@ pub enum SectionPlacement {
     AboveAccounts,
     /// In the scrolling sidebar, after the last account.
     BelowAccounts,
+}
+
+/// What the main window shows at launch (#256).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StartView {
+    /// All Inboxes, or with that row hidden the first account's first
+    /// folder.
+    #[default]
+    AllInboxes,
+    /// The inbox of the account whose mail was open last.
+    AccountInbox,
+    /// Whichever folder was open last, All Inboxes included.
+    LastFolder,
+}
+
+pub fn load_start_view() -> StartView {
+    load_privacy().start_view
 }
 
 pub fn load_chevrons_left() -> bool {
@@ -2107,7 +2130,7 @@ pub fn save_filters(rules: &[FilterRule]) {
     }
 }
 
-/// A tag (#71): a name and a colour for one IMAP keyword. Keywords are the
+/// A tag (#71): a name and a color for one IMAP keyword. Keywords are the
 /// standard's own per-message user flags, kept on the server beside `\Seen`
 /// and `\Flagged`, so a tag set here is the same tag Thunderbird, Apple Mail
 /// or a webmail shows — and theirs show here once a tag names their keyword
@@ -2125,7 +2148,7 @@ pub struct Tag {
     pub color: String,
 }
 
-/// The tag palette, GNOME's colour set at its middle strength.
+/// The tag palette, GNOME's color set at its middle strength.
 pub const TAG_COLORS: &[&str] = &[
     "#1c71d8", "#2ec27e", "#f5c211", "#e66100", "#c01c28", "#813d9c", "#865e3c", "#77767b",
 ];
@@ -2152,7 +2175,7 @@ impl Tag {
             .collect()
     }
 
-    /// The CSS class carrying this tag's colour (see the app's tag stylesheet):
+    /// The CSS class carrying this tag's color (see the app's tag stylesheet):
     /// the keyword reduced to what a class name may hold.
     pub fn css_class(&self) -> String {
         tag_css_class(&self.keyword)
@@ -2187,9 +2210,9 @@ impl Tag {
         if name.is_empty() { keyword.to_string() } else { name }
     }
 
-    /// The colour to offer for a found keyword: Thunderbird's built-ins get
-    /// their Thunderbird colours (as the palette has them); the rest take
-    /// the first palette colour not in `taken`, cycling once every colour is.
+    /// The color to offer for a found keyword: Thunderbird's built-ins get
+    /// their Thunderbird colors (as the palette has them); the rest take
+    /// the first palette color not in `taken`, cycling once every color is.
     pub fn color_for_keyword(keyword: &str, taken: &[String]) -> String {
         let fixed = match keyword.to_ascii_lowercase().as_str() {
             "$label1" => Some(TAG_COLORS[4]), // red
@@ -2211,7 +2234,7 @@ impl Tag {
     }
 }
 
-/// The CSS class for a keyword's colour: `tag-` plus the keyword lowercased,
+/// The CSS class for a keyword's color: `tag-` plus the keyword lowercased,
 /// with every character a class name can't carry turned into its code so two
 /// keywords never share a class.
 pub fn tag_css_class(keyword: &str) -> String {
@@ -2256,7 +2279,7 @@ pub fn save_tags(tags: &[Tag]) {
 }
 
 /// A portable settings bundle (#50): every configuration file Hylki keeps —
-/// preferences, accounts (colours, emoji, labels, aliases, folder roles and
+/// preferences, accounts (colors, emoji, labels, aliases, folder roles and
 /// per-account push included), filters, tags, cloud storage accounts,
 /// sidebar layout, window/pane state (the app icon choice with it), and
 /// the words taught to the spell checker. Passwords and tokens never
@@ -2441,7 +2464,7 @@ pub fn load_message_theme() -> MessageTheme {
     load_privacy().message_theme
 }
 
-/// The three reader-override preferences (#56): font switch, font, colour switch.
+/// The three reader-override preferences (#56): font switch, font, color switch.
 pub fn load_reader_override() -> (bool, String, bool) {
     let p = load_privacy();
     (p.override_fonts, p.reader_font, p.override_colors)
@@ -2995,6 +3018,7 @@ pub fn save_privacy(
     read_mark: ReadMark,
     files: FilesPrefs,
     link_browser: String,
+    start_view: StartView,
 ) {
     let Some(path) = privacy_path() else {
         return;
@@ -3094,6 +3118,7 @@ pub fn save_privacy(
         files_large: files.large,
         files_limit_mb: files.limit_mb,
         link_browser,
+        start_view,
     };
     match toml::to_string_pretty(&file) {
         Ok(toml) => {
@@ -3363,6 +3388,15 @@ struct StateFile {
     /// restart right after the wizard, for the app icon, must not loop.
     #[serde(default)]
     wizard_completed: bool,
+    /// The mail view open last (#256): an account's folder, or All Inboxes
+    /// when `email` is empty. Accounts are named by address, which stays
+    /// true across launches where an account's number may not.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    last_view: Option<LastView>,
+    /// The account whose mail was open last, kept through a visit to All
+    /// Inboxes so "the last account's inbox" still has an account to mean.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    last_account: String,
     /// The icon generation whose default has been asserted over the stored
     /// choice (see `app_icon::ICON_GENERATION`): a release that brings a new
     /// authoritative icon bumps the constant, and the first start on it puts
@@ -3424,6 +3458,36 @@ fn save_state(state: &StateFile) {
     if let Ok(toml) = toml::to_string_pretty(state) {
         let _ = std::fs::write(&path, toml);
     }
+}
+
+/// A mail view to reopen at launch (#256).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct LastView {
+    /// The account's address; empty for All Inboxes.
+    #[serde(default)]
+    pub email: String,
+    /// The folder's path on the server.
+    #[serde(default)]
+    pub path: String,
+}
+
+/// The view open last and the account whose mail was open last.
+pub fn load_last_view() -> (Option<LastView>, String) {
+    let s = load_state();
+    (s.last_view, s.last_account)
+}
+
+/// Record the view just opened, unless it is the one already recorded:
+/// this runs on every folder switch.
+pub fn save_last_view(view: LastView) {
+    let mut s = load_state();
+    let account = if view.email.is_empty() { s.last_account.clone() } else { view.email.clone() };
+    if s.last_view.as_ref() == Some(&view) && s.last_account == account {
+        return;
+    }
+    s.last_view = Some(view);
+    s.last_account = account;
+    save_state(&s);
 }
 
 /// Whether the welcome wizard has been completed before.
@@ -3921,8 +3985,8 @@ mod filter_tests {
     }
 
     #[test]
-    fn found_keywords_get_names_and_colours() {
-        // Thunderbird's built-ins keep Thunderbird's names and colours.
+    fn found_keywords_get_names_and_colors() {
+        // Thunderbird's built-ins keep Thunderbird's names and colors.
         assert_eq!(Tag::name_for_keyword("$label1"), "Important");
         assert_eq!(Tag::name_for_keyword("$LABEL4"), "To Do");
         assert_eq!(Tag::color_for_keyword("$label1", &[]), TAG_COLORS[4]);
@@ -3931,7 +3995,7 @@ mod filter_tests {
         assert_eq!(Tag::name_for_keyword("$Receipts"), "Receipts");
         assert_eq!(Tag::name_for_keyword("to-do"), "To Do");
         assert_eq!(Tag::name_for_keyword("$"), "$");
-        // Colours skip what is taken, then cycle.
+        // Colors skip what is taken, then cycle.
         let taken: Vec<String> = TAG_COLORS[..2].iter().map(|c| c.to_string()).collect();
         assert_eq!(Tag::color_for_keyword("Receipts", &taken), TAG_COLORS[2]);
         let all: Vec<String> = TAG_COLORS.iter().map(|c| c.to_string()).collect();
@@ -4288,18 +4352,18 @@ impl ToolbarItem {
     /// The symbolic icon the button (and the settings chip) wears.
     pub fn icon(self) -> &'static str {
         match self {
-            ToolbarItem::Reply => "co.hyprlab.Hylki-mail-reply-sender-symbolic",
-            ToolbarItem::ReplyAll => "co.hyprlab.Hylki-mail-reply-all-symbolic",
-            ToolbarItem::Forward => "co.hyprlab.Hylki-mail-forward-symbolic",
-            ToolbarItem::Star => "co.hyprlab.Hylki-non-starred-symbolic",
-            ToolbarItem::Archive => "co.hyprlab.Hylki-mail-archive-symbolic",
-            ToolbarItem::Delete => "co.hyprlab.Hylki-user-trash-symbolic",
-            ToolbarItem::Spam => "co.hyprlab.Hylki-mail-mark-junk-symbolic",
-            ToolbarItem::ReadUnread => "co.hyprlab.Hylki-mail-unread-symbolic",
-            ToolbarItem::Tags => "co.hyprlab.Hylki-tag-outline-symbolic",
-            ToolbarItem::MoveTo => "co.hyprlab.Hylki-folder-symbolic",
-            ToolbarItem::Find => "co.hyprlab.Hylki-loupe-with-arrow-symbolic",
-            ToolbarItem::Print => "co.hyprlab.Hylki-printer-symbolic",
+            ToolbarItem::Reply => "mail-reply-sender-symbolic",
+            ToolbarItem::ReplyAll => "mail-reply-all-symbolic",
+            ToolbarItem::Forward => "mail-forward-symbolic",
+            ToolbarItem::Star => "hylki-non-starred-symbolic",
+            ToolbarItem::Archive => "mail-archive-symbolic",
+            ToolbarItem::Delete => "user-trash-symbolic",
+            ToolbarItem::Spam => "mail-mark-junk-symbolic",
+            ToolbarItem::ReadUnread => "mail-unread-symbolic",
+            ToolbarItem::Tags => "tag-outline-symbolic",
+            ToolbarItem::MoveTo => "folder-symbolic",
+            ToolbarItem::Find => "loupe-with-arrow-symbolic",
+            ToolbarItem::Print => "printer-symbolic",
         }
     }
 

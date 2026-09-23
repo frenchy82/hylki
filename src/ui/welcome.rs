@@ -2,7 +2,7 @@
 //! with no accounts configured.
 //!
 //! The whole window is the theme's own ground, light or dark, with the wordmark as the
-//! hero, and content floating on window-coloured cards — deliberate and warm,
+//! hero, and content floating on window-colored cards — deliberate and warm,
 //! not a form dump. Steps: welcome → add an account (one-click GNOME Online
 //! Accounts imports + a manual IMAP form with provider presets) → privacy →
 //! personalize → done. Accounts and settings apply through the app's existing
@@ -613,7 +613,7 @@ impl Component for Welcome {
         preview_row.set_selected(crate::config::load_preview_lines().min(2));
         let sw_avatars = adw::SwitchRow::new();
         sw_avatars.set_title(&i18n("Sender avatars"));
-        sw_avatars.set_subtitle(&i18n("Colourful initials beside each message"));
+        sw_avatars.set_subtitle(&i18n("Colorful initials beside each message"));
         sw_avatars.set_active(crate::config::load_avatars());
         let sw_threading = adw::SwitchRow::new();
         sw_threading.set_title(&i18n("Conversation view"));
@@ -660,7 +660,7 @@ impl Component for Welcome {
 
         // ---- Page 5: done ----
         let done = gtk::Box::new(gtk::Orientation::Vertical, 16);
-        let check = gtk::Image::from_icon_name("co.hyprlab.Hylki-verified-checkmark-symbolic");
+        let check = gtk::Image::from_icon_name("verified-checkmark-symbolic");
         check.set_pixel_size(72);
         check.add_css_class("welcome-check");
         done.append(&check);
@@ -686,7 +686,7 @@ impl Component for Welcome {
         let hb = adw::HeaderBar::new();
         hb.set_show_title(false);
         hb.add_css_class("flat");
-        let back_btn = gtk::Button::from_icon_name("co.hyprlab.Hylki-go-previous-symbolic");
+        let back_btn = gtk::Button::from_icon_name("go-previous-symbolic");
         back_btn.add_css_class("flat");
         back_btn.set_visible(false);
         {

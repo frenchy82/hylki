@@ -220,6 +220,12 @@ impl RichEditor {
         webview.connect_load_changed(|v, ev| {
             if ev == webkit6::LoadEvent::Finished {
                 fade_in(v);
+                // Focus given before the document was there reached the
+                // view but no caret: place it now.
+                let root_focus = v.root().and_then(|r| r.focus());
+                if root_focus.is_some_and(|f| f == *v.upcast_ref::<gtk::Widget>() || f.is_ancestor(v)) {
+                    exec(v, PLACE_CARET);
+                }
             }
         });
         {
@@ -236,7 +242,7 @@ impl RichEditor {
         // A live theme flip re-grounds the open document (#148): the scheme
         // and the ground are baked into the document at load, so without
         // this the editor stays in the scheme it was opened in. Deferred to
-        // the next main-loop pass — the theme's named colours are only
+        // the next main-loop pass — the theme's named colors are only
         // re-resolved after the signal fires.
         let theme_handler = {
             let weak = webview.downgrade();
@@ -244,7 +250,7 @@ impl RichEditor {
                 reground(&weak, sm.is_dark());
             })
         };
-        // An appearance theme moves the same colours with no scheme flip, so
+        // An appearance theme moves the same colors with no scheme flip, so
         // the editor re-grounds for that too — and drops out of the list
         // once its view is gone.
         {
@@ -648,6 +654,8 @@ impl RichEditor {
         if self.source.get().is_some() {
             // The document's own field is what takes the caret.
             exec(&self.webview, "var t=document.getElementById('src');if(t)t.focus();");
+        } else {
+            exec(&self.webview, PLACE_CARET);
         }
     }
 
@@ -761,6 +769,21 @@ pub fn history_key(keyval: gtk::gdk::Key, state: gtk::gdk::ModifierType) -> Opti
     }
     None
 }
+
+/// Give the rich document's body the caret. Keyboard focus on the view
+/// alone left no caret in it, so a reply opened with nowhere to type
+/// until the body was clicked (#266). A caret already in the body stays
+/// where it is; otherwise it goes to the top, above any quote. Only a
+/// contenteditable body is touched: the source document's field takes
+/// focus itself.
+const PLACE_CARET: &str = "(function(){var b=document.body;\
+    if(!b||!b.isContentEditable)return;\
+    var s=getSelection();\
+    var kept=s.rangeCount&&b.contains(s.anchorNode)?s.getRangeAt(0).cloneRange():null;\
+    b.focus();\
+    var r=kept;\
+    if(!r){r=document.createRange();r.setStart(b,0);r.collapse(true);}\
+    s.removeAllRanges();s.addRange(r);})()";
 
 fn exec(webview: &webkit6::WebView, js: &str) {
     webview.evaluate_javascript(js, None, None, gtk::gio::Cancellable::NONE, |_| {});
@@ -1032,19 +1055,19 @@ fn build_toolbar(
     // one, and each command both opens and leaves its block (the lists
     // through execCommand's own toggling, the quote through __hylkiQuote).
     let commands: &[(&str, &str, &str, Option<char>)] = &[
-        ("co.hyprlab.Hylki-format-text-bold-symbolic", i18n_noop("Bold"), "document.execCommand('bold')", None),
-        ("co.hyprlab.Hylki-format-text-italic-symbolic", i18n_noop("Italic"), "document.execCommand('italic')", None),
-        ("co.hyprlab.Hylki-format-text-underline-symbolic", i18n_noop("Underline"), "document.execCommand('underline')", None),
-        ("co.hyprlab.Hylki-format-text-strikethrough-symbolic", i18n_noop("Strikethrough"), "document.execCommand('strikeThrough')", None),
+        ("format-text-bold-symbolic", i18n_noop("Bold"), "document.execCommand('bold')", None),
+        ("format-text-italic-symbolic", i18n_noop("Italic"), "document.execCommand('italic')", None),
+        ("format-text-underline-symbolic", i18n_noop("Underline"), "document.execCommand('underline')", None),
+        ("format-text-strikethrough-symbolic", i18n_noop("Strikethrough"), "document.execCommand('strikeThrough')", None),
         ("SEP", "", "", None),
-        ("co.hyprlab.Hylki-view-list-bullet-symbolic", i18n_noop("Bulleted list"), "document.execCommand('insertUnorderedList')", Some('u')),
-        ("co.hyprlab.Hylki-view-list-ordered-symbolic", i18n_noop("Numbered list"), "document.execCommand('insertOrderedList')", Some('o')),
+        ("view-list-bullet-symbolic", i18n_noop("Bulleted list"), "document.execCommand('insertUnorderedList')", Some('u')),
+        ("view-list-ordered-symbolic", i18n_noop("Numbered list"), "document.execCommand('insertOrderedList')", Some('o')),
         // Adwaita has no blockquote glyph; the indent icon reads as "quote".
-        ("co.hyprlab.Hylki-format-indent-more-symbolic", i18n_noop("Quote"), "window.__hylkiQuote()", Some('q')),
+        ("format-indent-more-symbolic", i18n_noop("Quote"), "window.__hylkiQuote()", Some('q')),
         // `LINK` is a sentinel command (handled specially); the icon is real.
-        ("co.hyprlab.Hylki-insert-link-symbolic", i18n_noop("Insert link"), "LINK", None),
+        ("insert-link-symbolic", i18n_noop("Insert link"), "LINK", None),
         ("SEP", "", "", None),
-        ("co.hyprlab.Hylki-edit-clear-symbolic", i18n_noop("Clear formatting"), "document.execCommand('removeFormat')", None),
+        ("edit-clear-symbolic", i18n_noop("Clear formatting"), "document.execCommand('removeFormat')", None),
     ];
 
     let mut toggles = Vec::new();
@@ -1996,10 +2019,10 @@ pub(crate) fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// Re-ground an open editor document (#148): the colour scheme and the page
+/// Re-ground an open editor document (#148): the color scheme and the page
 /// ground are baked into the document when it loads, so a theme change — a
 /// light/dark flip, or a new palette — has to be pushed into it. Deferred to
-/// the next main-loop pass, because the theme's named colours are only
+/// the next main-loop pass, because the theme's named colors are only
 /// re-resolved after the signal that announced the change. `false` means the
 /// view is gone and this editor needs telling no more.
 fn reground(weak: &gtk::glib::WeakRef<webkit6::WebView>, dark: bool) -> bool {

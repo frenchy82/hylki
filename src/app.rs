@@ -50,8 +50,15 @@ const READER_MIN_WIDTH: i32 = 400;
 
 /// How long a read/unread change sent to a worker keeps overriding what the
 /// server reports for its message and folder, should the worker's
-/// confirmation never come (a dropped connection mid-request).
-const PENDING_SEEN_MAX: std::time::Duration = std::time::Duration::from_secs(20);
+/// confirmation never come (a dropped connection mid-request). A worker
+/// busy with a large sync can take well over 20 seconds to reach a mark,
+/// and read mail used to turn unread again in the meantime (#255).
+const PENDING_SEEN_MAX: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// The same for mail taken out of a folder (moved, deleted, marked as
+/// spam): how long it stays off that folder's list without the worker's
+/// word that the move has run.
+const PENDING_MOVE_MAX: std::time::Duration = std::time::Duration::from_secs(120);
 
 /// How long a manual "Apply Filters" run (#198) waits for the folders it asked
 /// for before reporting on whatever came back. A folder that is offline, or
@@ -352,6 +359,10 @@ struct UndoEntry {
     /// Whether applying this entry puts `rows` back on screen (undoing a
     /// move) or takes them away again (redoing it).
     rows_return: bool,
+    /// Steps on other accounts that belong to the same action, applied with
+    /// `step`: a move to another account (#265) is undone by bringing the
+    /// original back on one account and taking the copy away on the other.
+    also: Vec<(u32, UndoStep)>,
 }
 
 struct ReaderCompose {
@@ -413,7 +424,7 @@ pub struct AppModel {
     config: Vec<AccountConfig>,
     /// Demo mode's stand-in account configs (the sample accounts live only
     /// at the backend): what the Accounts panel edits, kept in memory so a
-    /// changed colour, emoji or picture shows without touching disk.
+    /// changed color, emoji or picture shows without touching disk.
     demo_config: Vec<AccountConfig>,
     window: adw::ApplicationWindow,
     prefs: Option<Controller<Preferences>>,
@@ -559,6 +570,19 @@ pub struct AppModel {
     /// ahead of the STORE still shows the old state; while an entry is
     /// young the app's own state for that message and folder wins over it.
     pending_seen: HashMap<(u32, String, u32), (bool, std::time::Instant)>,
+    /// Mail taken out of a folder whose move the worker has not reached
+    /// yet, keyed by (account, folder path, uid) → when it was sent. A list
+    /// the worker fetched ahead of the move still holds it, and putting it
+    /// back on screen made deleted mail come back, to be deleted again for
+    /// a request that had already run (#255). Filled by [`Self::send_to`],
+    /// which every such request goes through.
+    pending_moves: std::cell::RefCell<HashMap<(u32, String, u32), std::time::Instant>>,
+    /// Messages on their way to another account (#265), by token.
+    transfers: HashMap<u64, Transfer>,
+    next_transfer: u64,
+    /// How the moves to other accounts under way are going, for the status
+    /// line and the one report at the end.
+    transfer_tally: TransferTally,
     /// The account-list split view, narrowed to icon-only width when collapsed.
     sidebar_split: Option<adw::OverlaySplitView>,
     /// The "Hylki" title label, hidden while the sidebar is collapsed.
@@ -628,7 +652,7 @@ pub struct AppModel {
     /// The app chrome's theme preference (follow system / light / dark).
     app_theme: config::AppTheme,
     /// The appearance theme: a bundled palette's id, or "system" for the
-    /// stock GNOME colours (see `theme.rs`).
+    /// stock GNOME colors (see `theme.rs`).
     theme: String,
     /// Held so the in-flight collapse/expand width animation isn't dropped.
     sidebar_anim: Option<adw::TimedAnimation>,
@@ -656,7 +680,7 @@ pub struct AppModel {
     card_palette_collapse_secs: u64,
     /// Whether to load sender avatars from Gravatar.
     gravatar: bool,
-    /// Whether the coloured avatars are drawn at all (#29).
+    /// Whether the colored avatars are drawn at all (#29).
     avatars: bool,
     /// Whether the mail you sent wears its mailbox's face rather than the
     /// circle any other sender would get (#189).
@@ -780,13 +804,15 @@ pub struct AppModel {
     list_header_widgets: std::cell::OnceCell<ListHeaderWidgets>,
     /// Whether the sidebar's disclosure chevrons lead their rows.
     chevrons_left: bool,
+    /// What the window shows at launch (#256).
+    start_view: config::StartView,
     /// Console mode offered in the status bar (Settings → System & Appearance).
     console_mode: bool,
     /// Read-marking policy (#100).
     read_mark: config::ReadMark,
     /// Mail filter rules (#47), applied to inbox syncs.
     filters: Vec<config::FilterRule>,
-    /// Tags (#71): a name and colour per keyword.
+    /// Tags (#71): a name and color per keyword.
     tags: Vec<config::Tag>,
     /// The tag view, if that is the view — alongside `unified` and
     /// `selected`, never with: the account it is scoped to (`None` spans
@@ -804,7 +830,7 @@ pub struct AppModel {
     /// (#166), so reopening a tag view within a few seconds does not scan
     /// every folder again.
     keyword_sync_at: HashMap<u32, std::time::Instant>,
-    /// The tag colours as `.tag-<keyword>` classes, app-wide (the list's
+    /// The tag colors as `.tag-<keyword>` classes, app-wide (the list's
     /// chips, the sidebar's rows, the menus' swatches).
     tag_provider: gtk::CssProvider,
     /// The on-disk index, for reads the main thread makes itself: the tag
@@ -891,7 +917,7 @@ pub struct AppModel {
     override_fonts: bool,
     /// That font, as a Pango description; empty = the interface font.
     reader_font: String,
-    /// Ignore the senders' text and background colours (#56).
+    /// Ignore the senders' text and background colors (#56).
     override_colors: bool,
     /// Plain-text messages in monospace (#181), and the font ("" = the
     /// desktop's monospace font).
@@ -1365,6 +1391,7 @@ pub enum AppMsg {
     ToggleAccountFiltered(u32),
     ToggleAccountTags(u32),
     SetChevronsLeft(bool),
+    SetStartView(config::StartView),
     /// Where the Filtered Folders / Tags sections sit (Settings → Sidebar).
     SetFilteredPlacement(config::SectionPlacement),
     SetTagsPlacement(config::SectionPlacement),
@@ -1661,6 +1688,15 @@ pub enum AppMsg {
     /// The worker stored (or failed to store) a read/unread change the app
     /// had applied ahead of it.
     SeenSettled { account_id: u32, path: String, uid: u32 },
+    /// The worker has run (or failed) the move that took these messages
+    /// out of `path`: its lists can be believed about them again.
+    MovesSettled { account_id: u32, path: String, uids: Vec<u32> },
+    /// Moving mail to another account (#265): the source's copy of a
+    /// message, and the receiving account's answer.
+    RawExported { token: u64, raw: Result<Vec<u8>, String> },
+    RawImported { token: u64, result: Result<(), String> },
+    /// A message the cache listed is no longer in `path` on the server.
+    MessageGone { account_id: u32, message_id: u32, path: String, uid: u32 },
     /// `path` is the folder the body was read from — a UID only identifies a
     /// message within its own folder, so applying a body to a message means
     /// checking the folder too.
@@ -1803,7 +1839,7 @@ impl SimpleComponent for AppModel {
                                 },
                             },
                             pack_end = &gtk::MenuButton {
-                                set_icon_name: "co.hyprlab.Hylki-open-menu-symbolic",
+                                set_icon_name: "open-menu-symbolic",
                                 set_tooltip_text: Some(i18n("Main Menu").as_str()),
                                 add_css_class: "flat",
                                 set_menu_model: Some(&model.menu),
@@ -1837,7 +1873,7 @@ impl SimpleComponent for AppModel {
                             pack_start: &model.sidebar_refresh,
                             #[name = "sidebar_menu"]
                             pack_end = &gtk::MenuButton {
-                                set_icon_name: "co.hyprlab.Hylki-open-menu-symbolic",
+                                set_icon_name: "open-menu-symbolic",
                                 set_tooltip_text: Some(i18n("Main Menu").as_str()),
                                 add_css_class: "flat",
                                 set_menu_model: Some(&model.menu),
@@ -1931,7 +1967,7 @@ impl SimpleComponent for AppModel {
                                 // sidebar expand/collapse toggle (moved here from
                                 // the sidebar's own footer).
                                 pack_start = &gtk::Button {
-                                    set_icon_name: "co.hyprlab.Hylki-sidebar-show-symbolic",
+                                    set_icon_name: "sidebar-show-symbolic",
                                     #[watch]
                                     set_tooltip_text: Some(if model.rail_active { i18n("Expand sidebar") } else { i18n("Collapse sidebar") }.as_str()),
                                     add_css_class: "flat",
@@ -1945,7 +1981,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-system-search-symbolic",
+                                        set_icon_name: "system-search-symbolic",
                                         set_tooltip_text: Some(i18n("Search messages (Ctrl+F)").as_str()),
                                         add_css_class: "flat",
                                         connect_clicked[sender] => move |_| {
@@ -1969,7 +2005,7 @@ impl SimpleComponent for AppModel {
                                     add_css_class: "focus-fade",
                                     set_reveal_child: false,
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-view-more-horizontal-symbolic",
+                                        set_icon_name: "view-more-horizontal-symbolic",
                                         set_tooltip_text: Some(i18n("Search, filters and sort").as_str()),
                                         set_valign: gtk::Align::Center,
                                         add_css_class: "flat",
@@ -1982,7 +2018,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::ToggleButton {
-                                        set_icon_name: "co.hyprlab.Hylki-mail-unread-symbolic",
+                                        set_icon_name: "mail-unread-symbolic",
                                         set_tooltip_text: Some(i18n("Show only unread").as_str()),
                                         set_valign: gtk::Align::Center,
                                         add_css_class: "flat",
@@ -1997,7 +2033,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::ToggleButton {
-                                        set_icon_name: "co.hyprlab.Hylki-starred-symbolic",
+                                        set_icon_name: "starred-symbolic",
                                         set_tooltip_text: Some(i18n("Show only starred").as_str()),
                                         set_valign: gtk::Align::Center,
                                         add_css_class: "flat",
@@ -2014,7 +2050,7 @@ impl SimpleComponent for AppModel {
                                     add_css_class: "focus-fade",
                                     #[name = "list_sort_btn"]
                                     gtk::MenuButton {
-                                        set_icon_name: "co.hyprlab.Hylki-view-sort-descending-symbolic",
+                                        set_icon_name: "view-sort-descending-symbolic",
                                         set_tooltip_text: Some(i18n("Sort messages").as_str()),
                                         set_valign: gtk::Align::Center,
                                         add_css_class: "flat",
@@ -2076,7 +2112,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-document-edit-symbolic",
+                                        set_icon_name: "document-edit-symbolic",
                                         set_tooltip_text: Some(i18n("Edit this message").as_str()),
                                         add_css_class: "flat",
                                         #[watch]
@@ -2093,7 +2129,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-mail-send-symbolic",
+                                        set_icon_name: "mail-send-symbolic",
                                         set_tooltip_text: Some(i18n("Try to send this message now").as_str()),
                                         add_css_class: "flat",
                                         #[watch]
@@ -2131,7 +2167,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-mail-reply-sender-symbolic",
+                                        set_icon_name: "mail-reply-sender-symbolic",
                                         set_tooltip_text: Some(i18n("Reply").as_str()),
                                         add_css_class: "flat",
                                         #[watch]
@@ -2151,7 +2187,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-mail-reply-all-symbolic",
+                                        set_icon_name: "mail-reply-all-symbolic",
                                         set_tooltip_text: Some(i18n("Reply All").as_str()),
                                         add_css_class: "flat",
                                         #[watch]
@@ -2167,7 +2203,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-mail-forward-symbolic",
+                                        set_icon_name: "mail-forward-symbolic",
                                         set_tooltip_text: Some(i18n("Forward").as_str()),
                                         add_css_class: "flat",
                                         #[watch]
@@ -2185,8 +2221,8 @@ impl SimpleComponent for AppModel {
                                     gtk::Button {
                                         set_tooltip_text: Some(i18n("Flag").as_str()),
                                         // One glyph in both states, like every other
-                                        // icon; the flagged state carries colour only.
-                                        set_icon_name: "co.hyprlab.Hylki-non-starred-symbolic",
+                                        // icon; the flagged state carries color only.
+                                        set_icon_name: "hylki-non-starred-symbolic",
                                         #[watch]
                                         set_css_classes: if model.toolbar_star_lit() {
                                             &["flat", "star-active"]
@@ -2206,7 +2242,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-mail-archive-symbolic",
+                                        set_icon_name: "mail-archive-symbolic",
                                         set_tooltip_text: Some(i18n("Archive").as_str()),
                                         add_css_class: "flat",
                                         #[watch]
@@ -2222,7 +2258,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-user-trash-symbolic",
+                                        set_icon_name: "user-trash-symbolic",
                                         #[watch]
                                         set_tooltip_text: Some(&model.delete_tooltip()),
                                         add_css_class: "flat",
@@ -2248,7 +2284,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-printer-symbolic",
+                                        set_icon_name: "printer-symbolic",
                                         set_tooltip_text: Some(i18n("Print Preview (Ctrl+Shift+P)").as_str()),
                                         add_css_class: "flat",
                                         #[watch]
@@ -2268,7 +2304,7 @@ impl SimpleComponent for AppModel {
                                     set_transition_duration: FOCUS_ANIM_MS,
                                     add_css_class: "focus-fade",
                                     gtk::Button {
-                                        set_icon_name: "co.hyprlab.Hylki-loupe-with-arrow-symbolic",
+                                        set_icon_name: "loupe-with-arrow-symbolic",
                                         set_tooltip_text: Some(i18n("Find in message (Ctrl+F)").as_str()),
                                         add_css_class: "flat",
                                         // Greyed out, not hidden, with no message
@@ -2308,9 +2344,9 @@ impl SimpleComponent for AppModel {
                                     gtk::Button {
                                         #[watch]
                                         set_icon_name: if model.target_in_junk() {
-                                            "co.hyprlab.Hylki-mail-mark-notjunk-symbolic"
+                                            "mail-mark-notjunk-symbolic"
                                         } else {
-                                            "co.hyprlab.Hylki-mail-mark-junk-symbolic"
+                                            "mail-mark-junk-symbolic"
                                         },
                                         #[watch]
                                         set_tooltip_text: Some(if model.target_in_junk() { i18n("Not Spam") } else { i18n("Mark as Spam") }.as_str()),
@@ -2336,9 +2372,9 @@ impl SimpleComponent for AppModel {
                                         // "mark as read"), matching the menus.
                                         #[watch]
                                         set_icon_name: if model.reply_target().is_some_and(|m| m.unread) {
-                                            "co.hyprlab.Hylki-mail-read-symbolic"
+                                            "hylki-mail-read-symbolic"
                                         } else {
-                                            "co.hyprlab.Hylki-mail-unread-symbolic"
+                                            "mail-unread-symbolic"
                                         },
                                         #[watch]
                                         set_tooltip_text: Some(if model.reply_target().is_some_and(|m| m.unread) { i18n("Mark as Read") } else { i18n("Mark as Unread") }.as_str()),
@@ -2421,7 +2457,7 @@ impl SimpleComponent for AppModel {
                         },
                         #[wrap(Some)]
                         set_end_widget = &gtk::Button {
-                            set_icon_name: "co.hyprlab.Hylki-window-close-symbolic",
+                            set_icon_name: "window-close-symbolic",
                             set_tooltip_text: Some(i18n("Close").as_str()),
                             add_css_class: "circular",
                             add_css_class: "flat",
@@ -2435,7 +2471,7 @@ impl SimpleComponent for AppModel {
                         set_spacing: 8,
 
                         gtk::Button {
-                            set_icon_name: "co.hyprlab.Hylki-go-previous-symbolic",
+                            set_icon_name: "go-previous-symbolic",
                             set_tooltip_text: Some(i18n("Previous").as_str()),
                             set_valign: gtk::Align::Center,
                             add_css_class: "circular",
@@ -2486,7 +2522,7 @@ impl SimpleComponent for AppModel {
                         },
 
                         gtk::Button {
-                            set_icon_name: "co.hyprlab.Hylki-go-next-symbolic",
+                            set_icon_name: "go-next-symbolic",
                             set_tooltip_text: Some(i18n("Next").as_str()),
                             set_valign: gtk::Align::Center,
                             add_css_class: "circular",
@@ -2511,13 +2547,13 @@ impl SimpleComponent for AppModel {
                         set_end_widget = &gtk::Box {
                             set_spacing: 6,
                             gtk::Button {
-                                set_icon_name: "co.hyprlab.Hylki-document-open-symbolic",
+                                set_icon_name: "document-open-symbolic",
                                 set_tooltip_text: Some(i18n("Open").as_str()),
                                 add_css_class: "flat",
                                 connect_clicked => AppMsg::LightboxOpenCurrent,
                             },
                             gtk::Button {
-                                set_icon_name: "co.hyprlab.Hylki-folder-download-symbolic",
+                                set_icon_name: "folder-download-symbolic",
                                 set_tooltip_text: Some(i18n("Download…").as_str()),
                                 add_css_class: "flat",
                                 connect_clicked => AppMsg::LightboxDownloadCurrent,
@@ -2537,7 +2573,7 @@ impl SimpleComponent for AppModel {
         relm4::set_global_css(include_str!("styles.css"));
         register_icons();
         // Before install_scheme_css and before the reader exists: both read
-        // the theme's colours back, and both listen for the light/dark flip
+        // the theme's colors back, and both listen for the light/dark flip
         // that swaps a theme's two palettes — GTK runs those handlers in
         // connection order, so the palette has to be in place first.
         crate::theme::install(&config::load_theme());
@@ -2619,6 +2655,21 @@ impl SimpleComponent for AppModel {
         let demo_data = demo_mode() && config.is_empty();
         let show_attachments = config::load_show_attachments();
         let show_contacts = config::load_show_contacts();
+        let start_view = config::load_start_view();
+        let start = {
+            use crate::ui::sidebar::StartTarget;
+            let (last, last_account) = config::load_last_view();
+            match start_view {
+                config::StartView::AllInboxes => None,
+                config::StartView::AccountInbox => {
+                    Some(last_account).filter(|e| !e.is_empty()).map(StartTarget::Inbox)
+                }
+                config::StartView::LastFolder => last
+                    .filter(|v| !v.email.is_empty())
+                    .map(|v| StartTarget::Folder(v.email, v.path)),
+            }
+        };
+        let start_pending = start.is_some();
         let sidebar = Sidebar::builder()
             .launch(SidebarInit {
                 collapsed: rail_now,
@@ -2632,8 +2683,17 @@ impl SimpleComponent for AppModel {
                 archive_expanded,
                 show_attachments,
                 show_contacts,
+                start,
             })
             .forward(sender.input_sender(), sidebar_output_msg);
+        // The sidebar waits for the launch view's account to list its
+        // folders; one that is offline with nothing cached never does.
+        if start_pending {
+            let s = sidebar.sender().clone();
+            gtk::glib::timeout_add_seconds_local_once(5, move || {
+                let _ = s.send(SidebarInput::DropStart);
+            });
+        }
         // The peek panel's rows: a second, always-expanded instance.
         let peek_sidebar = Sidebar::builder()
             .launch(SidebarInit {
@@ -2648,6 +2708,7 @@ impl SimpleComponent for AppModel {
                 archive_expanded,
                 show_attachments,
                 show_contacts,
+                start: None,
             })
             .forward(sender.input_sender(), sidebar_output_msg);
 
@@ -2957,7 +3018,7 @@ impl SimpleComponent for AppModel {
             reader_toolbar_widgets: std::cell::OnceCell::new(),
             reader_overflow_btn: {
                 let b = gtk::Button::from_icon_name(
-                    "co.hyprlab.Hylki-view-more-horizontal-symbolic",
+                    "view-more-horizontal-symbolic",
                 );
                 b.set_tooltip_text(Some(i18n("Actions").as_str()));
                 b.add_css_class("flat");
@@ -2965,13 +3026,13 @@ impl SimpleComponent for AppModel {
                 b
             },
             reader_tag_btn: {
-                let b = gtk::Button::from_icon_name("co.hyprlab.Hylki-tag-outline-symbolic");
+                let b = gtk::Button::from_icon_name("tag-outline-symbolic");
                 b.set_tooltip_text(Some(i18n("Tags").as_str()));
                 b.add_css_class("flat");
                 b
             },
             reader_move_btn: {
-                let b = gtk::Button::from_icon_name("co.hyprlab.Hylki-folder-symbolic");
+                let b = gtk::Button::from_icon_name("folder-symbolic");
                 b.set_tooltip_text(Some(i18n("Move To…").as_str()));
                 b.add_css_class("flat");
                 b
@@ -3016,6 +3077,10 @@ impl SimpleComponent for AppModel {
             related_ids: HashMap::new(),
             folder_unread: HashMap::new(),
             pending_seen: HashMap::new(),
+            pending_moves: std::cell::RefCell::new(HashMap::new()),
+            transfers: HashMap::new(),
+            next_transfer: 0,
+            transfer_tally: TransferTally::default(),
             sidebar_split: None,
             app_title: None,
             sidebar_menu: None,
@@ -3127,6 +3192,7 @@ impl SimpleComponent for AppModel {
             focus_action,
             list_header_widgets: std::cell::OnceCell::new(),
             chevrons_left: config::load_chevrons_left(),
+            start_view,
             console_mode: config::load_console_mode(),
             read_mark: config::load_read_mark(),
             // The demo (no accounts of its own) ships with tags and filter
@@ -3576,7 +3642,7 @@ impl SimpleComponent for AppModel {
             // Leftmost, same spot as the message list header's: the sidebar
             // collapse/expand toggle.
             let sidebar_btn =
-                gtk::Button::from_icon_name("co.hyprlab.Hylki-sidebar-show-symbolic");
+                gtk::Button::from_icon_name("sidebar-show-symbolic");
             sidebar_btn.set_tooltip_text(Some(i18n("Toggle sidebar").as_str()));
             sidebar_btn.add_css_class("flat");
             let s = sender.input_sender().clone();
@@ -3785,7 +3851,7 @@ impl SimpleComponent for AppModel {
         model.sidebar_menu = Some(widgets.sidebar_menu.clone());
         // The header Refresh's icon/spinner faces, and its click.
         {
-            let icon = gtk::Image::from_icon_name("co.hyprlab.Hylki-view-refresh-symbolic");
+            let icon = gtk::Image::from_icon_name("view-refresh-symbolic");
             model.sidebar_refresh_stack.add_named(&icon, Some("icon"));
             model
                 .sidebar_refresh_stack
@@ -3809,7 +3875,7 @@ impl SimpleComponent for AppModel {
         }
         // The peek panel's Refresh: the same icon/spinner faces.
         {
-            let icon = gtk::Image::from_icon_name("co.hyprlab.Hylki-view-refresh-symbolic");
+            let icon = gtk::Image::from_icon_name("view-refresh-symbolic");
             model.peek_refresh_stack.add_named(&icon, Some("icon"));
             model
                 .peek_refresh_stack
@@ -4634,10 +4700,30 @@ impl SimpleComponent for AppModel {
                         });
                     }
                 }
+                // Two seconds on, it logs where focus landed (#266).
                 if std::env::var("HYLKI_SHOWCASE_REPLY").is_ok() {
                     let s = sender.clone();
+                    let window = root.clone();
                     gtk::glib::timeout_add_seconds_local_once(4, move || {
                         s.input(AppMsg::Reply);
+                        // After the split's slide, which focus waits for.
+                        gtk::glib::timeout_add_seconds_local_once(2, move || showcase_log_focus(&window));
+                    });
+                }
+                // HYLKI_SHOWCASE_NEW=<seconds>[:<address>] opens a new message
+                // at that moment (4 s unless it parses), addressed when an
+                // address follows, and, a second later, logs
+                // where keyboard focus landed: the field row's title, or the
+                // focused widget's type (#266).
+                if let Ok(v) = std::env::var("HYLKI_SHOWCASE_NEW") {
+                    let (at, to) = v.split_once(':').unwrap_or((v.as_str(), ""));
+                    let at = at.parse::<u32>().unwrap_or(4);
+                    let to = to.to_string();
+                    let s = sender.clone();
+                    let window = root.clone();
+                    gtk::glib::timeout_add_seconds_local_once(at, move || {
+                        s.input(if to.is_empty() { AppMsg::Compose } else { AppMsg::ComposeTo(to) });
+                        gtk::glib::timeout_add_seconds_local_once(1, move || showcase_log_focus(&window));
                     });
                 }
                 // HYLKI_SHOWCASE_FORWARD=<seconds> does the same with
@@ -5586,7 +5672,7 @@ impl SimpleComponent for AppModel {
                 if self.theme != id {
                     self.theme = id.clone();
                     // Repaints the chrome and tells the reader and any open
-                    // composer to re-ground their documents. The colours the
+                    // composer to re-ground their documents. The colors the
                     // scheme-dependent CSS reads back are taken a main-loop
                     // pass later, as they are on a light/dark flip, so the
                     // lookups answer for the palette that just landed.
@@ -5867,14 +5953,15 @@ impl SimpleComponent for AppModel {
                 // …unless the user picked this reply out of a conversation already
                 // on screen. They asked for one message; assembling its thread
                 // again would swap the conversation back in under them.
+                // Asked for after the body, below: the cache lane answers both,
+                // one after the other, and a cached body is what the reader is
+                // waiting to show (#259).
+                let mut related = None;
                 if self.threading && !solo {
                     let only = [m.clone()];
                     let ids = thread_ids(if thread.is_empty() { &only[..] } else { &thread });
                     if !ids.is_empty() {
-                        self.send_to(account_id, MailRequest::LoadRelated {
-                            message_id: m.id,
-                            ids,
-                        });
+                        related = Some(MailRequest::LoadRelated { message_id: m.id, ids });
                         self.thread_related_pending = true;
                     }
                 }
@@ -5905,6 +5992,9 @@ impl SimpleComponent for AppModel {
                         self.thread_related_pending = false;
                         self.show_thread();
                         self.load_thread_attachments();
+                        if let Some(req) = related.take() {
+                            self.send_to(account_id, req);
+                        }
                     } else {
                         // Conversation: assemble the thread with any cached bodies,
                         // request the rest, and render it as a scrollable conversation.
@@ -5944,6 +6034,9 @@ impl SimpleComponent for AppModel {
                         for ((aid, path), items) in batch_bodies_by_folder(to_load) {
                             self.send_to(aid, MailRequest::LoadBodies { items, path });
                         }
+                        if let Some(req) = related.take() {
+                            self.send_to(account_id, req);
+                        }
                         self.show_thread();
                         self.load_thread_attachments();
                     }
@@ -5972,6 +6065,9 @@ impl SimpleComponent for AppModel {
                         m.id,
                     );
                     if unchanged {
+                        if let Some(req) = related.take() {
+                            self.send_to(account_id, req);
+                        }
                         return;
                     }
                     // Request the body FIRST so it renders before attachments — the
@@ -5984,6 +6080,9 @@ impl SimpleComponent for AppModel {
                                 uid: m.uid,
                             });
                         }
+                    }
+                    if let Some(req) = related.take() {
+                        self.send_to(account_id, req);
                     }
                     self.show_message(Some(display), needs_body);
                 }
@@ -6947,8 +7046,13 @@ impl SimpleComponent for AppModel {
                 if self.tray_icon != icon {
                     self.tray_icon = icon;
                     self.save_settings();
-                    if let Some(tray) = &self.tray {
-                        tray.set_icon(icon, crate::app_icon::png_for(&self.app_icon));
+                    // A fresh item rather than a new icon on the old one: the
+                    // AppIndicator extension, taken from a picture back to a
+                    // symbolic icon's file, kept drawing the picture (#258).
+                    // A new item is set up from nothing, as at startup.
+                    if let Some(tray) = self.tray.take() {
+                        tray.stop();
+                        self.start_tray(&sender);
                     }
                 }
             }
@@ -6961,7 +7065,7 @@ impl SimpleComponent for AppModel {
                 if self.app_icon != id || replaces_custom {
                     self.app_icon = id;
                     if let Some(tray) = &self.tray {
-                        tray.set_icon(self.tray_icon, crate::app_icon::png_for(&self.app_icon));
+                        tray.set_icon(self.tray_icon, &crate::app_icon::tray_image(&self.app_icon));
                     }
                     self.offer_restart_for_icon(&sender);
                 }
@@ -7199,6 +7303,13 @@ impl SimpleComponent for AppModel {
                     self.tags_placement = p;
                     self.save_settings();
                     self.rebuild_sidebar();
+                }
+            }
+
+            AppMsg::SetStartView(view) => {
+                if self.start_view != view {
+                    self.start_view = view;
+                    self.save_settings();
                 }
             }
 
@@ -7670,7 +7781,7 @@ impl SimpleComponent for AppModel {
                     let entry = MenuEntry::new(i18n("Customize Toolbar…"), move || {
                         let _ = s.send(AppMsg::CustomizeToolbar);
                     })
-                    .icon("co.hyprlab.Hylki-preferences-desktop-appearance-symbolic");
+                    .icon("preferences-desktop-appearance-symbolic");
                     show_context_menu(header, x, y, vec![vec![entry]]);
                 }
             }
@@ -8163,7 +8274,7 @@ impl SimpleComponent for AppModel {
 
             AppMsg::AccountSaved { original_email, account } => {
                 // Demo mode: the edit lands on the in-memory stand-in (so a
-                // new colour, emoji or picture shows in the sidebar and the
+                // new color, emoji or picture shows in the sidebar and the
                 // reader at once) and nothing is written or reconnected.
                 if self.config.is_empty() && demo_mode() {
                     let slot = original_email
@@ -8469,8 +8580,8 @@ impl SimpleComponent for AppModel {
                         None => return,
                     }
                 };
-                let folders = self.folders.get(&account_id).cloned().unwrap_or_default();
-                if folders.is_empty() {
+                let accounts = self.picker_accounts(account_id, exclude);
+                if accounts.is_empty() {
                     return;
                 }
                 // The reading pane shows a conversation (its row was opened,
@@ -8490,10 +8601,9 @@ impl SimpleComponent for AppModel {
                     &btn,
                     (btn.width() / 2) as f64,
                     btn.height() as f64,
-                    folders,
-                    exclude,
+                    accounts,
                     conversation,
-                    move |dest, whole| {
+                    move |account_id, dest, whole| {
                         let _ = s.send(AppMsg::MoveSelectionTo { account_id, dest, whole });
                     },
                 );
@@ -8506,14 +8616,14 @@ impl SimpleComponent for AppModel {
             AppMsg::ListMoveTo { messages, offer_whole, x, y } => {
                 let Some(first) = messages.first() else { return };
                 let account_id = first.account_id;
-                let folders = self.folders.get(&account_id).cloned().unwrap_or_default();
-                if folders.is_empty() {
-                    return;
-                }
                 // Leave out the folder the mail sits in, when it is one.
                 let exclude = self
                     .resolve_folder_path(first)
                     .filter(|p| messages.iter().all(|m| self.resolve_folder_path(m).as_ref() == Some(p)));
+                let accounts = self.picker_accounts(account_id, exclude);
+                if accounts.is_empty() {
+                    return;
+                }
                 let conversation = offer_whole.then_some(messages.len());
                 let s = sender.input_sender().clone();
                 let window = self.window.clone();
@@ -8521,10 +8631,9 @@ impl SimpleComponent for AppModel {
                     &window,
                     x,
                     y,
-                    folders,
-                    exclude,
+                    accounts,
                     conversation,
-                    move |dest, whole| {
+                    move |account_id, dest, whole| {
                         let picked = if offer_whole && !whole {
                             messages[..1].to_vec()
                         } else {
@@ -8566,7 +8675,11 @@ impl SimpleComponent for AppModel {
                         .collect();
                     self.drop_move(account_id, dest, items);
                 } else if let Some(m) = self.reply_target() {
-                    self.move_to_path(m, dest);
+                    if m.account_id == account_id {
+                        self.move_to_path(m, dest);
+                    } else {
+                        self.drop_move(account_id, dest, vec![(m.account_id, m.folder_id, m.uid, m.id)]);
+                    }
                 }
             }
 
@@ -9112,6 +9225,16 @@ impl SimpleComponent for AppModel {
                 if self.pending_seen_in_folder(account_id, folder_id) {
                     return;
                 }
+                // Likewise while mail is being taken out of the folder: each
+                // move changes the server's count before the app hears the
+                // move is done, and every change started another sync of the
+                // folder, which put the mail back on the list (#255).
+                if self
+                    .folder_path(account_id, folder_id)
+                    .is_some_and(|p| self.pending_moves_in(account_id, &p))
+                {
+                    return;
+                }
                 let prev = self.folder_unread.insert((account_id, folder_id), unread);
                 if prev != Some(unread) {
                     self.sync_background_folder(account_id, folder_id);
@@ -9124,8 +9247,35 @@ impl SimpleComponent for AppModel {
                 self.pending_seen.retain(|_, (_, at)| at.elapsed() < PENDING_SEEN_MAX);
             }
 
+            AppMsg::RawExported { token, raw } => {
+                let Some(t) = self.transfers.get(&token) else { return };
+                match raw {
+                    Ok(raw) => self.send_to(t.dest_account, MailRequest::ImportRaw {
+                        token,
+                        path: t.dest_path.clone(),
+                        raw,
+                        seen: t.seen,
+                        flagged: t.flagged,
+                    }),
+                    Err(e) => self.transfer_failed(token, e),
+                }
+            }
+
+            AppMsg::RawImported { token, result } => match result {
+                Ok(()) => self.transfer_landed(token),
+                Err(e) => self.transfer_failed(token, e),
+            },
+
+            AppMsg::MovesSettled { account_id, path, uids } => {
+                let mut pending = self.pending_moves.borrow_mut();
+                for uid in uids {
+                    pending.remove(&(account_id, path.clone(), uid));
+                }
+                pending.retain(|_, at| at.elapsed() < PENDING_MOVE_MAX);
+            }
+
             AppMsg::FolderUnreadByPath { account_id, path, unread } => {
-                if self.pending_seen_in(account_id, &path) {
+                if self.pending_seen_in(account_id, &path) || self.pending_moves_in(account_id, &path) {
                     return;
                 }
                 // Resolve against the current list; a path the app no longer
@@ -9160,6 +9310,9 @@ impl SimpleComponent for AppModel {
             AppMsg::Messages { account_id, folder_id, messages } => {
                 self.notifications.emit(NotifyInput::ClearConnectivity);
                 let messages = self.merge_local_tags(account_id, messages);
+                // Mail already moved or deleted here, in a list fetched before
+                // the worker got to the move.
+                let messages = self.drop_pending_moves(account_id, folder_id, messages);
                 // Auto-delete blacklisted senders from the inbox before anything
                 // else sees them.
                 let messages = self.apply_blacklist(account_id, folder_id, messages);
@@ -9421,6 +9574,7 @@ impl SimpleComponent for AppModel {
                 // Background backfill: grow the folder's search index without
                 // disturbing the current view (no title/query reset).
                 let messages = self.merge_local_tags(account_id, messages);
+                let messages = self.drop_pending_moves(account_id, folder_id, messages);
                 let messages = self.apply_blacklist(account_id, folder_id, messages);
                 let entry = self.message_cache.entry((account_id, folder_id)).or_default();
                 let existing: std::collections::HashSet<u32> =
@@ -9606,6 +9760,48 @@ impl SimpleComponent for AppModel {
                 }
             }
 
+            AppMsg::MessageGone { account_id, message_id, path, uid } => {
+                // A conversation member the cache still listed turned out to
+                // be gone from the server (#257): take it out of the open
+                // conversation rather than show it as a blank card.
+                let folder = self
+                    .folders
+                    .get(&account_id)
+                    .and_then(|fs| fs.iter().find(|f| f.path == path))
+                    .map(|f| f.id);
+                if let Some(fid) = folder {
+                    if let Some(msgs) = self.message_cache.get_mut(&(account_id, fid)) {
+                        msgs.retain(|m| m.uid != uid);
+                    }
+                }
+                // The message the reader was opened on stays: that one is
+                // the list's to settle, by its own sync.
+                let opened = self.current.as_ref().map(|c| (c.account_id, c.id, c.folder_id));
+                let before = self.current_thread.len();
+                self.current_thread.retain(|m| {
+                    let gone = m.account_id == account_id
+                        && m.id == message_id
+                        && folder.is_none_or(|fid| m.folder_id == fid);
+                    !gone || opened == Some((m.account_id, m.id, m.folder_id))
+                });
+                // Remembered conversations may hold it too, and the list's
+                // badges counted it.
+                self.forget_threads(account_id);
+                self.message_list
+                    .emit(MessageListInput::ForgetThreadSummaries(account_id));
+                if self.current_thread.len() != before {
+                    if self.current_thread.len() > 1 {
+                        self.queue_thread_render(&sender);
+                    } else {
+                        // Nothing left to make a conversation of.
+                        self.current_thread.clear();
+                        let current = self.current.clone();
+                        let loading = current.as_ref().is_some_and(|c| c.body.is_empty());
+                        self.show_message(current, loading);
+                    }
+                }
+            }
+
             AppMsg::RefsRepaired { account_id, folder_id } => {
                 // Only the folder on screen, and only its cached copy: the repair
                 // rewrote rows on disk, and re-reading is what lets the list see
@@ -9670,12 +9866,9 @@ impl SimpleComponent for AppModel {
                         (m.uid, m.folder_id)
                     });
                 let Some((uid, folder_id)) = target else { return };
-                if let Some(path) = self
-                    .folders
-                    .get(&account_id)
-                    .and_then(|fs| fs.iter().find(|f| f.id == folder_id))
-                    .map(|f| f.path.clone())
-                {
+                if let Some(path) = self.folder_path(account_id, folder_id) {
+                    self.pending_seen
+                        .insert((account_id, path.clone(), uid), (true, std::time::Instant::now()));
                     self.send_to(account_id, MailRequest::SetSeen { path, uid, seen: true });
                 }
                 self.message_list.emit(MessageListInput::MarkRead(id));
@@ -10220,7 +10413,7 @@ impl AppModel {
             .append(Some(format!("{} {}", i18n("About"), crate::APP_NAME).as_str()), Some("win.about"));
     }
 
-    /// The reader's font-and-colour override (#56) as the reader applies it:
+    /// The reader's font-and-color override (#56) as the reader applies it:
     /// the font only when the switch is on, the interface font standing in
     /// where none was chosen.
     fn reader_style(&self) -> config::ReaderStyle {
@@ -10336,6 +10529,7 @@ impl AppModel {
             self.read_mark,
             self.files_prefs,
             self.link_browser.clone(),
+            self.start_view,
         );
     }
 
@@ -10628,17 +10822,83 @@ impl AppModel {
     }
 
     /// Send a request to a specific account's worker.
+    ///
+    /// A request that takes mail out of a folder is recorded in
+    /// `pending_moves` and followed by a [`MailRequest::Settle`], so the
+    /// mail stays off that folder's list until the worker has run it,
+    /// whichever of the many move paths sent it.
     fn send_to(&self, account_id: u32, req: MailRequest) {
-        if let Some(worker) = self.workers.get(&account_id) {
-            let _ = worker.send(req);
+        let Some(worker) = self.workers.get(&account_id) else { return };
+        let taken = match &req {
+            MailRequest::MoveMessage { path, uid, .. }
+            | MailRequest::MarkSpam { path, uid, .. }
+            | MailRequest::MarkHam { path, uid, .. } => Some((path.clone(), vec![*uid])),
+            MailRequest::MoveMessages { path, uids, .. }
+            | MailRequest::MarkHamMany { path, uids, .. }
+            | MailRequest::PurgeMessages { path, uids } => Some((path.clone(), uids.clone())),
+            _ => None,
+        };
+        let _ = worker.send(req);
+        if let Some((path, uids)) = taken {
+            let now = std::time::Instant::now();
+            let mut pending = self.pending_moves.borrow_mut();
+            for uid in &uids {
+                pending.insert((account_id, path.clone(), *uid), now);
+            }
+            let _ = worker.send(MailRequest::Settle { path, uids });
         }
     }
 
-    /// The account to act on by default (selected folder's account, else first).
+    /// Whether mail taken out of `path` is still waiting on its move.
+    fn pending_moves_in(&self, account_id: u32, path: &str) -> bool {
+        self.pending_moves.borrow().iter().any(|((a, p, _), at)| {
+            *a == account_id && p == path && at.elapsed() < PENDING_MOVE_MAX
+        })
+    }
+
+    /// Take the mail whose move is still on its way off a folder list the
+    /// worker fetched before running it.
+    fn drop_pending_moves(
+        &self,
+        account_id: u32,
+        folder_id: u32,
+        mut messages: Vec<Message>,
+    ) -> Vec<Message> {
+        let Some(path) = self.folder_path(account_id, folder_id) else {
+            return messages;
+        };
+        if !self.pending_moves_in(account_id, &path) {
+            return messages;
+        }
+        let pending = self.pending_moves.borrow();
+        messages.retain(|m| {
+            pending
+                .get(&(account_id, path.clone(), m.uid))
+                .is_none_or(|at| at.elapsed() >= PENDING_MOVE_MAX)
+        });
+        messages
+    }
+
+    /// The path of one of an account's folders, by id.
+    fn folder_path(&self, account_id: u32, folder_id: u32) -> Option<String> {
+        self.folders
+            .get(&account_id)
+            .and_then(|fs| fs.iter().find(|f| f.id == folder_id))
+            .map(|f| f.path.clone())
+    }
+
+    /// The account to act on by default: the selected folder's account,
+    /// else the first in sidebar order. With All Inboxes open that is the
+    /// account a new message starts from, so it has to be the one the
+    /// person put on top, not the one added first (#261).
     fn active_account(&self) -> u32 {
         self.selected
             .as_ref()
             .map(|s| s.account_id)
+            .or_else(|| {
+                let first = self.ordered_emails().into_iter().next()?;
+                self.accounts.iter().find(|a| a.email == first).map(|a| a.id)
+            })
             .or_else(|| self.accounts.first().map(|a| a.id))
             .unwrap_or(1)
     }
@@ -10785,7 +11045,7 @@ impl AppModel {
         self.spawn_workers(sender);
     }
 
-    /// Resolved avatar/accent colour for an account (custom, else auto accent).
+    /// Resolved avatar/accent color for an account (custom, else auto accent).
     fn account_color(&self, account_id: u32) -> String {
         self.effective_config()
             .get(account_id.saturating_sub(1) as usize)
@@ -11016,6 +11276,7 @@ impl AppModel {
             rows,
             threads,
             rows_return: true,
+            also: Vec::new(),
         });
     }
 
@@ -11064,6 +11325,7 @@ impl AppModel {
             rows: Vec::new(),
             threads: Vec::new(),
             rows_return: true,
+            also: Vec::new(),
         });
     }
 
@@ -11120,6 +11382,7 @@ impl AppModel {
             rows: entry.rows.clone(),
             threads: entry.threads.clone(),
             rows_return: !entry.rows_return,
+            also: entry.also.iter().map(|(a, step)| (*a, step.inverse())).collect(),
         };
         // Hold on to the bodies whatever happens: the move is about to change
         // these messages' UIDs, and the reload that follows would otherwise
@@ -11155,6 +11418,22 @@ impl AppModel {
         // fail again every time. The entries under it are usually about other
         // messages entirely, so the rest of the history stands.
         if self.apply_undo_step(entry.account_id, &entry.step) {
+            for (account_id, step) in &entry.also {
+                if self.apply_undo_step(*account_id, step) {
+                    // The step reloads the folder the mail goes into; the one
+                    // it leaves is looked at again here, so its rows go too.
+                    if let UndoStep::Move { from, .. } = step {
+                        if let Some(folder_id) = self
+                            .folders
+                            .get(account_id)
+                            .and_then(|fs| fs.iter().find(|f| &f.path == from))
+                            .map(|f| f.id)
+                        {
+                            self.send_to(*account_id, MailRequest::SyncFolder { folder_id, path: from.clone() });
+                        }
+                    }
+                }
+            }
             if redo {
                 self.undo_stack.push(back);
             } else {
@@ -11568,6 +11847,10 @@ impl AppModel {
     fn mark_opened_read(&mut self, m: &Message) {
         let account_id = m.account_id;
         if let Some(path) = self.resolve_folder_path(m) {
+            // Held like any other read mark, or a list fetched before the
+            // worker stores it shows the message unread again (#255).
+            self.pending_seen
+                .insert((account_id, path.clone(), m.uid), (true, std::time::Instant::now()));
             self.send_to(account_id, MailRequest::SetSeen { path, uid: m.uid, seen: true });
         }
         // Reading new mail clears that account's new-mail notification.
@@ -11817,7 +12100,7 @@ impl AppModel {
         self.tray = crate::tray::TrayHandle::start(
             sender.input_sender().clone(),
             self.tray_icon,
-            crate::app_icon::png_for(&self.app_icon),
+            &crate::app_icon::tray_image(&self.app_icon),
             unified,
             mail,
         );
@@ -12074,7 +12357,7 @@ impl AppModel {
             tags_placement: self.tags_placement,
         });
 
-        // Keep the list's per-account tint colours in sync.
+        // Keep the list's per-account tint colors in sync.
         let colors: std::collections::HashMap<u32, String> = self
             .accounts
             .iter()
@@ -12232,7 +12515,7 @@ impl AppModel {
                 MenuEntry::new($label, move || {
                     let _ = s.send($msg);
                 })
-                .icon(concat!("co.hyprlab.Hylki-", $icon, "-symbolic"))
+                .icon(concat!($icon, "-symbolic"))
                 .enabled($enabled)
             }};
         }
@@ -12288,7 +12571,7 @@ impl AppModel {
                     T::ReplyAll => section.push(entry!(i18n("Reply All"), "mail-reply-all", AppMsg::ReplyAll, acts)),
                     T::Forward => section.push(entry!(i18n("Forward"), "mail-forward", AppMsg::Forward, acts)),
                     T::Star => section.push(if starred {
-                        entry!(i18n("Remove Flag"), "non-starred", AppMsg::ToggleStar, acts)
+                        entry!(i18n("Remove Flag"), "hylki-non-starred", AppMsg::ToggleStar, acts)
                     } else {
                         entry!(i18n("Flag"), "starred", AppMsg::ToggleStar, acts)
                     }),
@@ -12300,7 +12583,7 @@ impl AppModel {
                         entry!(i18n("Mark as Spam"), "mail-mark-junk", AppMsg::MarkSpam, acts)
                     }),
                     T::ReadUnread => section.push(if target_unread {
-                        entry!(i18n("Mark as Read"), "mail-read", AppMsg::ToggleReadCurrent, acts)
+                        entry!(i18n("Mark as Read"), "hylki-mail-read", AppMsg::ToggleReadCurrent, acts)
                     } else {
                         entry!(i18n("Mark as Unread"), "mail-unread", AppMsg::ToggleReadCurrent, acts)
                     }),
@@ -12309,7 +12592,7 @@ impl AppModel {
                     T::Tags => {
                         if let Some(entries) = self.reader_tag_entries(sender) {
                             section.push(
-                                MenuEntry::submenu(i18n("Tags"), vec![entries]).icon("co.hyprlab.Hylki-tag-outline-symbolic"),
+                                MenuEntry::submenu(i18n("Tags"), vec![entries]).icon("tag-outline-symbolic"),
                             );
                         }
                     }
@@ -12355,20 +12638,20 @@ impl AppModel {
         let search = MenuEntry::new(i18n("Search Messages…"), move || {
             let _ = s.send(AppMsg::OpenListSearch);
         })
-        .icon("co.hyprlab.Hylki-system-search-symbolic");
+        .icon("system-search-symbolic");
         let unread = lh.unread.clone();
         let unread_on = unread.is_active();
         let unread_entry = MenuEntry::new(i18n("Show only unread"), move || {
             unread.set_active(!unread.is_active());
         })
-        .icon("co.hyprlab.Hylki-mail-unread-symbolic")
+        .icon("mail-unread-symbolic")
         .selected(unread_on);
         let starred = lh.starred.clone();
         let starred_on = starred.is_active();
         let starred_entry = MenuEntry::new(i18n("Show only starred"), move || {
             starred.set_active(!starred.is_active());
         })
-        .icon("co.hyprlab.Hylki-starred-symbolic")
+        .icon("starred-symbolic")
         .selected(starred_on);
         let current = lh.sort.state().and_then(|v| v.str().map(String::from)).unwrap_or_default();
         let orders: Vec<MenuEntry> = [
@@ -12388,7 +12671,7 @@ impl AppModel {
         })
         .collect();
         let sort = MenuEntry::submenu(i18n("Sort"), vec![orders])
-            .icon("co.hyprlab.Hylki-view-sort-descending-symbolic");
+            .icon("view-sort-descending-symbolic");
         let sections = vec![vec![search], vec![unread_entry, starred_entry], vec![sort]];
         // The message count heads the menu, where the header showed it.
         let header = (!self.list_count.is_empty()).then(|| self.list_count.clone());
@@ -12795,6 +13078,9 @@ impl AppModel {
     /// sidebar row does; a notification click lands here too.
     fn open_unified(&mut self, view: UnifiedView) {
         let t_open = std::time::Instant::now();
+        if view == UnifiedView::Kind(FolderKind::Inbox) && !demo_mode() {
+            config::save_last_view(config::LastView::default());
+        }
         self.close_sidebar_peek();
         self.mirror_selection(match view {
             UnifiedView::Kind(FolderKind::Inbox) => crate::ui::sidebar::Sel::Unified,
@@ -12905,7 +13191,7 @@ impl AppModel {
             MenuEntry::new(label, move || {
                 let _ = s.send(AppMsg::CardAction { action, message: Box::new(message.clone()) });
             })
-            .icon(format!("co.hyprlab.Hylki-{icon}-symbolic"))
+            .icon(format!("{icon}-symbolic"))
         };
         let kind = self.folder_kind(m.account_id, m.folder_id);
         let in_junk = kind == Some(FolderKind::Junk);
@@ -12919,12 +13205,12 @@ impl AppModel {
             ],
             vec![
                 if m.starred {
-                    item(RowAction::ToggleStar, i18n("Remove Star"), "non-starred")
+                    item(RowAction::ToggleStar, i18n("Remove Star"), "hylki-non-starred")
                 } else {
                     item(RowAction::ToggleStar, i18n("Star"), "starred")
                 },
                 if m.unread {
-                    item(RowAction::ToggleRead, i18n("Mark as Read"), "mail-read")
+                    item(RowAction::ToggleRead, i18n("Mark as Read"), "hylki-mail-read")
                 } else {
                     item(RowAction::ToggleRead, i18n("Mark as Unread"), "mail-unread")
                 },
@@ -12942,7 +13228,7 @@ impl AppModel {
                     });
                 });
             sections.push(vec![
-                MenuEntry::submenu(i18n("Tags"), vec![entries]).icon("co.hyprlab.Hylki-tag-outline-symbolic"),
+                MenuEntry::submenu(i18n("Tags"), vec![entries]).icon("tag-outline-symbolic"),
             ]);
         }
         let mut acts = Vec::new();
@@ -12966,7 +13252,7 @@ impl AppModel {
                         y,
                     });
                 })
-                .icon("co.hyprlab.Hylki-folder-symbolic"),
+                .icon("folder-symbolic"),
             );
         }
         acts.push(item(RowAction::Archive, i18n("Archive"), "mail-archive"));
@@ -12990,7 +13276,7 @@ impl AppModel {
             sections.push(vec![MenuEntry::new(label, move || {
                 let _ = s.send(AppMsg::SetRemoteContent { account_id, id, show: !showing });
             })
-            .icon(format!("co.hyprlab.Hylki-{icon}-symbolic"))]);
+            .icon(format!("{icon}-symbolic"))]);
         }
         sections.push(vec![item(RowAction::ViewSource, i18n("View Source"), "code")]);
         show_context_menu(&self.window, x, y, sections);
@@ -13044,6 +13330,10 @@ impl AppModel {
     /// messages instantly (if any), and kick off a background sync. Shared by the
     /// sidebar selection and the "open message from notification" flow.
     fn select_folder(&mut self, account_id: u32, folder_id: u32, _name: String, path: String) {
+        // For "Open at startup" (#256). The demo's accounts are not real.
+        if let Some(email) = self.email_of(account_id).filter(|_| !demo_mode()) {
+            config::save_last_view(config::LastView { email, path: path.clone() });
+        }
         self.leave_gallery();
         self.showing_contacts = false;
         self.showing_outbox = false;
@@ -14330,6 +14620,7 @@ impl AppModel {
         let (id, init) = self.build_compose_init(account_id, prefill, true, false);
         let controller = self.spawn_compose(init, sender);
         let window = self.compose_window_host(controller.widget(), id, sender);
+        controller.emit(ComposeInput::FocusInitial);
         self.composers.push(ComposeHost { id, controller, window });
     }
 
@@ -14652,11 +14943,17 @@ impl AppModel {
             );
             anim.set_easing(adw::Easing::EaseOutCubic);
             let cell = self.split_close_anim.clone();
+            // Focus waits for the slide: the pane opens from nothing, and a
+            // Paned child with no height is hidden, so focus given to it at
+            // once fell to the Paned and the reply opened with no cursor in
+            // it (#266).
+            let compose = controller.sender().clone();
             anim.connect_done({
                 let cell = cell.clone();
                 move |_| {
                     cell.borrow_mut().take();
                     set_split_shrink(&split, bottom, false);
+                    compose.emit(ComposeInput::FocusInitial);
                 }
             });
             *cell.borrow_mut() = Some(anim.clone());
@@ -14682,8 +14979,8 @@ impl AppModel {
             // skipped — the composer pops in instead of sliding down.
             let s = slot.clone();
             gtk::glib::idle_add_local_once(move || s.set_reveal_child(true));
+            controller.emit(ComposeInput::FocusInitial);
         }
-        controller.emit(ComposeInput::FocusEditor);
         self.reader_compose = Some(ReaderCompose { id, controller, window: None });
         // A fresh composer has nothing to take back yet; the last one's
         // labels must not carry over into its menu.
@@ -14758,7 +15055,7 @@ impl AppModel {
                 r.controller.emit(ComposeInput::SetWindowed(false));
             }
         }
-        r.controller.emit(ComposeInput::FocusEditor);
+        r.controller.emit(ComposeInput::FocusInitial);
         self.reader_compose = Some(r);
     }
 
@@ -15025,21 +15322,256 @@ impl AppModel {
         self.discard_message(&m);
     }
 
+    /// Whether mail from another account can be moved into this one (#265):
+    /// IMAP and JMAP accounts take a message whole. A Microsoft account
+    /// files one posted to a folder as a draft, and POP3 has only an inbox.
+    fn can_receive(&self, account_id: u32) -> bool {
+        if demo_mode() {
+            return true;
+        }
+        self.config.get(account_id.saturating_sub(1) as usize).is_some_and(|c| {
+            c.enabled && matches!(c.protocol, config::Protocol::Imap | config::Protocol::Jmap)
+        })
+    }
+
+    /// What the Move To picker lists: `own` account's folders less
+    /// `exclude`, then, each under its name and in sidebar order, the
+    /// folders of the other accounts that can take the mail (#265).
+    fn picker_accounts(
+        &self,
+        own: u32,
+        exclude: Option<String>,
+    ) -> Vec<crate::ui::folder_picker::PickerAccount> {
+        use crate::ui::folder_picker::PickerAccount;
+        let mut out = Vec::new();
+        if let Some(folders) = self.folders.get(&own).filter(|f| !f.is_empty()) {
+            out.push(PickerAccount { account_id: own, heading: None, folders: folders.clone(), exclude });
+        }
+        for email in self.ordered_emails() {
+            let Some(a) = self.accounts.iter().find(|a| a.email == email && a.id != own) else { continue };
+            if !self.can_receive(a.id) {
+                continue;
+            }
+            let Some(folders) = self.folders.get(&a.id).filter(|f| !f.is_empty()) else { continue };
+            out.push(PickerAccount {
+                account_id: a.id,
+                heading: Some(self.account_name(a.id)),
+                folders: folders.clone(),
+                exclude: None,
+            });
+        }
+        out
+    }
+
+    /// Move mail from other accounts into `dest` on `dest_account` (#265):
+    /// each message is copied out of its account and into this one, with
+    /// its read and starred state, and only once the copy is stored is the
+    /// original put in its own account's Trash (erased where there is
+    /// none). The rows leave the list at once and come back if it fails.
+    fn transfer_messages(&mut self, items: Vec<(u32, u32, u32, u32)>, dest_account: u32, dest: String) {
+        let mut removed_ids = Vec::new();
+        for (aid, fid, uid, id) in items {
+            let cached = self.find_cached_message(aid, id);
+            let src = match &cached {
+                Some(m) => self.resolve_folder_path(m),
+                None => self.folder_path(aid, fid),
+            };
+            let Some(src) = src else { continue };
+            let src_folder = cached.as_ref().map_or(fid, |m| m.folder_id);
+            let token = self.next_transfer;
+            self.next_transfer += 1;
+            self.transfers.insert(token, Transfer {
+                src_account: aid,
+                src_folder,
+                src_path: src.clone(),
+                uid,
+                dest_account,
+                dest_path: dest.clone(),
+                seen: cached.as_ref().is_none_or(|m| !m.unread),
+                flagged: cached.as_ref().is_some_and(|m| m.starred),
+                row: cached.clone(),
+            });
+            // Off the source's lists until the move has landed or failed.
+            self.pending_moves.borrow_mut().insert((aid, src.clone(), uid), std::time::Instant::now());
+            if let Some(m) = &cached {
+                self.discard_message_local(m);
+            }
+            removed_ids.push(id);
+            self.transfer_tally.total += 1;
+            self.send_to(aid, MailRequest::ExportRaw { token, path: src, uid });
+        }
+        self.transfer_tally.dest_accounts.insert(dest_account);
+        self.transfer_tally.dest_folders.insert((dest_account, dest));
+        if !removed_ids.is_empty() {
+            self.message_list.emit(MessageListInput::RemoveMany(removed_ids));
+            self.push_unread_counts();
+        }
+        self.show_transfer_status();
+    }
+
+    /// A message is stored in its new account: take the original out.
+    fn transfer_landed(&mut self, token: u64) {
+        let Some(t) = self.transfers.remove(&token) else { return };
+        let trash = self
+            .folder_path_for(t.src_account, FolderKind::Trash)
+            .filter(|trash| *trash != t.src_path);
+        if let Some(row) = t.row.filter(|m| !m.message_id.is_empty()) {
+            self.transfer_tally.landed.push(Landed {
+                src_account: t.src_account,
+                src_path: t.src_path.clone(),
+                src_trash: trash.clone(),
+                dest_account: t.dest_account,
+                dest_path: t.dest_path.clone(),
+                row,
+            });
+        }
+        let req = match trash {
+            Some(dest) => MailRequest::MoveMessage { path: t.src_path, uid: t.uid, dest },
+            None => MailRequest::PurgeMessages { path: t.src_path, uids: vec![t.uid] },
+        };
+        self.send_to(t.src_account, req);
+        self.transfer_tally.done += 1;
+        self.transfer_step();
+    }
+
+    /// A message could not be copied across: it stays where it was, and
+    /// comes back on its folder's list.
+    fn transfer_failed(&mut self, token: u64, error: String) {
+        let Some(t) = self.transfers.remove(&token) else { return };
+        tracing::warn!("move to another account failed: {error}");
+        self.pending_moves.borrow_mut().remove(&(t.src_account, t.src_path.clone(), t.uid));
+        self.send_to(t.src_account, MailRequest::SyncFolder { folder_id: t.src_folder, path: t.src_path });
+        self.transfer_tally.failed += 1;
+        self.transfer_tally.error.get_or_insert(error);
+        self.transfer_step();
+    }
+
+    /// After each message: the status line, and once all are through, a
+    /// fresh look at the folders the mail went into and, if any failed, the
+    /// one error report.
+    fn transfer_step(&mut self) {
+        let tally = &self.transfer_tally;
+        if tally.done + tally.failed < tally.total {
+            self.show_transfer_status();
+            return;
+        }
+        let mut tally = std::mem::take(&mut self.transfer_tally);
+        self.notifications.emit(NotifyInput::SetStatus(String::new()));
+        self.record_transfer_undo(std::mem::take(&mut tally.landed));
+        for (account_id, path) in &tally.dest_folders {
+            if let Some(folder_id) = self
+                .folders
+                .get(account_id)
+                .and_then(|fs| fs.iter().find(|f| f.path == *path))
+                .map(|f| f.id)
+            {
+                self.send_to(*account_id, MailRequest::SyncFolder { folder_id, path: path.clone() });
+            }
+        }
+        // The bar only speaks up for a failure: a move that worked shows
+        // itself, in the folders.
+        if tally.failed > 0 {
+            let names: Vec<String> = tally.dest_accounts.iter().map(|a| self.account_name(*a)).collect();
+            let text = ni18n_f(
+                "One message could not be moved to {account}: {error}",
+                "{n} messages could not be moved to {account}: {error}",
+                tally.failed as u32,
+                &[
+                    ("n", &tally.failed.to_string()),
+                    ("account", &names.join(", ")),
+                    ("error", tally.error.as_deref().unwrap_or("")),
+                ],
+            );
+            self.notifications.emit(NotifyInput::Push { text, error: true, connectivity: false });
+        }
+    }
+
+    /// One undo step for everything a batch of moves to other accounts put
+    /// down (#265): per source folder, the originals come back out of their
+    /// account's Trash, and the copies go into the receiving account's.
+    /// Mail that was erased at the source, or that went to an account with
+    /// no Trash, is left out: undoing it would leave a copy behind.
+    fn record_transfer_undo(&mut self, landed: Vec<Landed>) {
+        let mut groups: Vec<((u32, String, String, u32, String, String), Vec<Message>)> = Vec::new();
+        for l in landed {
+            let Some(src_trash) = l.src_trash else { continue };
+            let Some(dest_trash) = self
+                .folder_path_for(l.dest_account, FolderKind::Trash)
+                .filter(|t| *t != l.dest_path)
+            else {
+                continue;
+            };
+            let key = (l.src_account, l.src_path, src_trash, l.dest_account, l.dest_path, dest_trash);
+            match groups.iter_mut().find(|(k, _)| *k == key) {
+                Some((_, rows)) => rows.push(l.row),
+                None => groups.push((key, vec![l.row])),
+            }
+        }
+        let Some(((src_account, src_path, src_trash, dest_account, dest_path, dest_trash), rows)) =
+            groups.first().cloned()
+        else {
+            return;
+        };
+        let ids = |rows: &[Message]| rows.iter().map(|m| m.message_id.clone()).collect::<Vec<_>>();
+        // The first source folder is the entry's own step, so a quick undo
+        // puts its rows straight back; everything else rides along.
+        let mut also = vec![(
+            dest_account,
+            UndoStep::Move { from: dest_path.clone(), to: dest_trash, message_ids: ids(&rows) },
+        )];
+        for ((sa, sp, st, da, dp, dt), rows) in groups.iter().skip(1) {
+            also.push((*sa, UndoStep::Move { from: st.clone(), to: sp.clone(), message_ids: ids(rows) }));
+            also.push((*da, UndoStep::Move { from: dp.clone(), to: dt.clone(), message_ids: ids(rows) }));
+        }
+        let what = self.move_label(dest_account, &dest_path);
+        let threads = Vec::new();
+        self.push_undo_entry(UndoEntry {
+            account_id: src_account,
+            what,
+            step: UndoStep::Move { from: src_trash, to: src_path, message_ids: ids(&rows) },
+            at: std::time::Instant::now(),
+            rows,
+            threads,
+            rows_return: true,
+            also,
+        });
+    }
+
+    fn show_transfer_status(&self) {
+        let tally = &self.transfer_tally;
+        let left = tally.total.saturating_sub(tally.done + tally.failed);
+        if left == 0 {
+            return;
+        }
+        let names: Vec<String> = tally.dest_accounts.iter().map(|a| self.account_name(*a)).collect();
+        self.notifications.emit(NotifyInput::SetStatus(ni18n_f(
+            "Moving one message to {account}…",
+            "Moving {n} messages to {account}…",
+            left as u32,
+            &[("n", &left.to_string()), ("account", &names.join(", "))],
+        )));
+    }
+
     /// Move a dropped drag selection into `dest` on `dest_account`. Messages are
     /// grouped by source folder and each group moved in a single `MoveMessages`
-    /// request, so dragging a multi-selection moves all of it (#23). IMAP can't
-    /// move mail between accounts, so anything from another account — possible
-    /// when the drag started in the unified inbox — stays put and is reported
-    /// rather than silently dropped.
+    /// request, so dragging a multi-selection moves all of it (#23). Anything
+    /// from another account (a drag from the unified inbox, a folder of
+    /// another account picked in Move To) is copied across (#265), or, where
+    /// the destination cannot take it, stays put and is reported.
     fn drop_move(&mut self, dest_account: u32, dest: String, items: Vec<(u32, u32, u32, u32)>) {
         let mut groups: HashMap<String, (Vec<u32>, Vec<Message>)> = HashMap::new();
         let mut removed_ids: Vec<u32> = Vec::new();
-        let mut foreign = 0usize;
+        let (foreign, items): (Vec<_>, Vec<_>) =
+            items.into_iter().partition(|(aid, ..)| *aid != dest_account);
+        // Mail from another account is copied across when this one can take
+        // it (#265); otherwise it stays put, and says so.
+        let foreign = if !foreign.is_empty() && self.can_receive(dest_account) {
+            self.transfer_messages(foreign, dest_account, dest.clone());
+            0
+        } else {
+            foreign.len()
+        };
         for (aid, fid, uid, id) in items {
-            if aid != dest_account {
-                foreign += 1;
-                continue;
-            }
             // Prefer the cached message: it knows its own source folder (in the
             // unified inbox that isn't the folder the row was listed under) and
             // lets the caches be cleaned up optimistically.
@@ -15069,9 +15601,9 @@ impl AppModel {
         if foreign > 0 {
             self.notifications.emit(NotifyInput::Push {
                 text: if foreign == 1 {
-                    i18n("One message stayed put — mail can't be moved between accounts")
+                    i18n("One message stayed put: this account can't take mail from another")
                 } else {
-                    i18n_f("{foreign} messages stayed put — mail can't be moved between accounts", &[("foreign", &foreign.to_string())])
+                    i18n_f("{foreign} messages stayed put: this account can't take mail from another", &[("foreign", &foreign.to_string())])
                 },
                 error: true,
                 connectivity: false,
@@ -16004,8 +16536,8 @@ impl AppModel {
         messages
     }
 
-    /// The tag colours as CSS: `.tag-<keyword>` fills (chips), and the same
-    /// class on a `.tag-tint` widget colours its glyph instead.
+    /// The tag colors as CSS: `.tag-<keyword>` fills (chips), and the same
+    /// class on a `.tag-tint` widget colors its glyph instead.
     fn refresh_tag_css(&self) {
         let mut css = String::new();
         for t in &self.tags {
@@ -16221,6 +16753,7 @@ impl AppModel {
             filtered_placement: self.filtered_placement,
             tags_placement: self.tags_placement,
             chevrons_left: self.chevrons_left,
+            start_view: self.start_view,
             console_mode: self.console_mode,
             read_mark: self.read_mark,
             settings_open_accounts: self.settings_open_accounts,
@@ -16259,17 +16792,22 @@ impl AppModel {
             app_icon: self.app_icon.clone(),
             accounts_panel: accounts.widget().clone().upcast::<gtk::Widget>(),
             accounts_sender: accounts.sender().clone(),
-            identities: self
-                .config
-                .iter()
-                .filter(|a| a.enabled)
-                .flat_map(|a| {
-                    std::iter::once((a.name.clone(), a.email.clone())).chain(a.aliases.iter().map(|al| {
-                        let (name, addr) = crate::config::split_identity(&al.identity);
-                        (if name.is_empty() { a.name.clone() } else { name }, addr)
-                    }))
-                })
-                .collect(),
+            // Sidebar order, so the list reads like the accounts do (#261).
+            identities: {
+                let mut enabled: Vec<&AccountConfig> = self.config.iter().filter(|a| a.enabled).collect();
+                enabled.sort_by_key(|a| {
+                    self.account_order.iter().position(|e| *e == a.email).unwrap_or(usize::MAX)
+                });
+                enabled
+            }
+            .into_iter()
+            .flat_map(|a| {
+                std::iter::once((a.name.clone(), a.email.clone())).chain(a.aliases.iter().map(|al| {
+                    let (name, addr) = crate::config::split_identity(&al.identity);
+                    (if name.is_empty() { a.name.clone() } else { name }, addr)
+                }))
+            })
+            .collect(),
             start_on_accounts: on_accounts,
             start_page: if on_accounts { Some("accounts".to_string()) } else { self.last_settings_page.clone() },
         };
@@ -16336,6 +16874,7 @@ impl AppModel {
                 PrefOutput::SetFilteredPlacement(p) => AppMsg::SetFilteredPlacement(p),
                 PrefOutput::SetTagsPlacement(p) => AppMsg::SetTagsPlacement(p),
                 PrefOutput::SetChevronsLeft(left) => AppMsg::SetChevronsLeft(left),
+                PrefOutput::SetStartView(view) => AppMsg::SetStartView(view),
                 PrefOutput::SetConsoleMode(on) => AppMsg::SetConsoleMode(on),
                 PrefOutput::SetReadMark(policy) => AppMsg::SetReadMark(policy),
                 PrefOutput::ExportSettings => AppMsg::ExportSettings,
@@ -16494,7 +17033,7 @@ impl AppModel {
 
     /// The tag finder's scan is over: fold every account's findings into one
     /// list (a keyword seen on two accounts is one entry), drop the keywords
-    /// that are tags already, propose a name and colour for each, and hand
+    /// that are tags already, propose a name and color for each, and hand
     /// the report to the Tags page — bringing Settings back if it was closed
     /// meanwhile.
     fn finish_tag_scan(&mut self, sender: &ComponentSender<Self>) {
@@ -16761,7 +17300,7 @@ impl AppModel {
             .subtitle(format!("What's new in {}", crate::VERSION))
             .activatable(true)
             .build();
-        notes_row.add_suffix(&gtk::Image::from_icon_name("co.hyprlab.Hylki-go-next-symbolic"));
+        notes_row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
         {
             let nav = nav.clone();
             notes_row.connect_activated(move |_| nav.push_by_tag("notes"));
@@ -16776,7 +17315,7 @@ impl AppModel {
                 .subtitle(&i18n("Make account passwords persist on Linux Mint"))
                 .activatable(true)
                 .build();
-            keyring_row.add_suffix(&gtk::Image::from_icon_name("co.hyprlab.Hylki-go-next-symbolic"));
+            keyring_row.add_suffix(&gtk::Image::from_icon_name("go-next-symbolic"));
             let sender = sender.clone();
             keyring_row.connect_activated(move |_| {
                 sender.input(AppMsg::ShowKeyringHelp { problem: false });
@@ -16800,7 +17339,7 @@ impl AppModel {
         let mk_row = |title: &str, url: &str| -> adw::ActionRow {
             let row = adw::ActionRow::builder().title(title).activatable(true).build();
             row.set_tooltip_text(Some(url));
-            row.add_suffix(&gtk::Image::from_icon_name("co.hyprlab.Hylki-adw-external-link-symbolic"));
+            row.add_suffix(&gtk::Image::from_icon_name("adw-external-link-symbolic"));
             let u = url.to_string();
             row.connect_activated(move |_| crate::oauth::open_uri(&u));
             row
@@ -16824,7 +17363,7 @@ impl AppModel {
         let cup = gtk::Label::new(Some("☕"));
         cup.add_css_class("about-coffee");
         coffee.add_prefix(&cup);
-        coffee.add_suffix(&gtk::Image::from_icon_name("co.hyprlab.Hylki-adw-external-link-symbolic"));
+        coffee.add_suffix(&gtk::Image::from_icon_name("adw-external-link-symbolic"));
         coffee.connect_activated(move |_| crate::oauth::open_uri("https://buymeacoffee.com/hyprlab"));
         links.append(&coffee);
         page.append(&links);
@@ -16854,7 +17393,7 @@ impl AppModel {
                     .build();
                 let url = format!("https://github.com/{handle}");
                 row.set_tooltip_text(Some(&url));
-                row.add_suffix(&gtk::Image::from_icon_name("co.hyprlab.Hylki-adw-external-link-symbolic"));
+                row.add_suffix(&gtk::Image::from_icon_name("adw-external-link-symbolic"));
                 row.connect_activated(move |_| crate::oauth::open_uri(&url));
                 list.append(&row);
             }
@@ -18992,7 +19531,7 @@ fn set_split_shrink(split: &gtk::Paned, bottom: bool, shrink: bool) {
 
 /// `HYLKI_DEMO` is set, so removing all real accounts leaves the app blank.
 /// Stand-in [`AccountConfig`]s mirroring the demo backend's three accounts
-/// (same names, colours and emoji), so the Accounts window has something to
+/// (same names, colors and emoji), so the Accounts window has something to
 /// show in demo screenshots.
 /// The demo's stand-in accounts as last edited in the Accounts panel, or
 /// the stock ones. The stand-in secret is not serialised, so it is put
@@ -19062,7 +19601,7 @@ fn demo_account_configs() -> Vec<AccountConfig> {
 }
 
 /// The demo's tags (#71): the keywords its sample messages carry, so the
-/// Tags section has rows and the row chips have colours.
+/// Tags section has rows and the row chips have colors.
 fn demo_tags() -> Vec<config::Tag> {
     let mk = |name: &str, keyword: &str, color: &str| config::Tag {
         name: name.into(),
@@ -19408,7 +19947,7 @@ struct GoaReconcile {
 /// whose GOA account no longer exists, and pause — rather than remove — the ones
 /// whose Mail service is switched off there, restoring their previous enabled
 /// state when it comes back on. Pausing keeps every local setting (label,
-/// colour, signature, sidebar state) intact. The servers follow GOA's too,
+/// color, signature, sidebar state) intact. The servers follow GOA's too,
 /// so an edit in GNOME Settings needs no re-import (#254). `live` is a snapshot the caller
 /// obtained while GOA was reachable — when it isn't, skip reconciliation
 /// entirely, so a momentarily-unavailable GOA never wipes imported accounts.
@@ -19586,7 +20125,7 @@ fn save_all_attachments(atts: Vec<Attachment>, parent: Option<adw::ApplicationWi
 /// app is held light until the wizard closes.
 static WIZARD_HOLDS_LIGHT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// Force (or release) the app-wide colour scheme per the appearance
+/// Force (or release) the app-wide color scheme per the appearance
 /// preference — the whole chrome, not just message content, which has its own
 /// setting.
 fn apply_app_theme(theme: config::AppTheme) {
@@ -19623,7 +20162,59 @@ fn register_icons() {
             theme.add_search_path(std::path::Path::new(&home).join(".local/share/icons"));
         }
     }
+    // HYLKI_SHOWCASE_ICON_THEME=<name> draws the app in that icon theme, to
+    // check a theme's icons replace Hylki's and the bundle fills in any it
+    // lacks (#260).
+    if let (Ok(name), Some(settings)) =
+        (std::env::var("HYLKI_SHOWCASE_ICON_THEME"), gtk::Settings::default())
+    {
+        settings.set_gtk_icon_theme_name(Some(&name));
+    }
     gtk::Window::set_default_icon_name(crate::APP_ID);
+}
+
+/// One message being moved to another account (#265): copied out of its
+/// folder, into the destination, and only then taken out of the source.
+struct Transfer {
+    src_account: u32,
+    src_folder: u32,
+    src_path: String,
+    uid: u32,
+    dest_account: u32,
+    dest_path: String,
+    seen: bool,
+    flagged: bool,
+    /// The message as the list had it, for the undo step.
+    row: Option<Message>,
+}
+
+/// A message that has landed in another account, and where its original
+/// went: what undoing the move needs (#265).
+struct Landed {
+    src_account: u32,
+    src_path: String,
+    /// The source account's Trash, where the original now is; `None` when
+    /// it was erased, which cannot be undone.
+    src_trash: Option<String>,
+    dest_account: u32,
+    dest_path: String,
+    row: Message,
+}
+
+/// The moves to other accounts under way, all batches together.
+#[derive(Default)]
+struct TransferTally {
+    total: usize,
+    done: usize,
+    failed: usize,
+    /// The first failure's reason, for the report.
+    error: Option<String>,
+    /// The receiving accounts, named in the report.
+    dest_accounts: std::collections::BTreeSet<u32>,
+    /// The folders mail went into, synced once everything has landed.
+    dest_folders: std::collections::BTreeSet<(u32, String)>,
+    /// What has landed so far, recorded as one undo step at the end.
+    landed: Vec<Landed>,
 }
 
 /// A running tag-finder scan (see `AppMsg::FindTags`).
@@ -19631,6 +20222,61 @@ struct TagScan {
     gen: u32,
     remaining: usize,
     found: Vec<(u32, Vec<KeywordFinding>)>,
+}
+
+/// Showcase: log where keyboard focus is (#266), in the newest visible
+/// window, the main one only when nothing else is up: the field row's
+/// title when it is in one, else the focused widget's type and the classes
+/// of the views around it, and for a WebView where its document's own
+/// focus and caret are.
+fn showcase_log_focus(main: &adw::ApplicationWindow) {
+    let tops = gtk::Window::toplevels();
+    let main: gtk::Window = main.clone().upcast();
+    let focus = (0..tops.n_items())
+        .filter_map(|i| tops.item(i).and_downcast::<gtk::Window>())
+        .filter(|w| w.is_visible())
+        .max_by_key(|w| *w != main)
+        .and_then(|w| gtk::prelude::GtkWindowExt::focus(&w));
+    let row = focus
+        .as_ref()
+        .and_then(|f| f.ancestor(adw::EntryRow::static_type()).and_downcast::<adw::EntryRow>());
+    match (row, focus) {
+        (Some(row), _) => tracing::info!("showcase: focus in the {:?} row", row.title()),
+        (None, Some(f)) => {
+            // A few ancestors' classes say which view a WebView belongs to.
+            let mut path = vec![f.type_().name().to_string()];
+            let mut w = f.parent();
+            while let Some(p) = w {
+                let classes = p.css_classes();
+                if !classes.is_empty() {
+                    path.push(classes.iter().map(|c| c.to_string()).collect::<Vec<_>>().join("."));
+                }
+                if path.len() > 5 {
+                    break;
+                }
+                w = p.parent();
+            }
+            tracing::info!("showcase: focus on {}", path.join(" < "));
+            // In a WebView, where the document's own focus and caret are.
+            if let Some(view) = f.downcast_ref::<webkit6::WebView>() {
+                use webkit6::prelude::WebViewExt;
+                view.evaluate_javascript(
+                    "(document.activeElement ? document.activeElement.tagName : 'none') + \
+                     ' has focus, selection ranges ' + getSelection().rangeCount + \
+                     ', collapsed ' + (getSelection().rangeCount ? getSelection().isCollapsed : '-')",
+                    None,
+                    None,
+                    None::<&gtk::gio::Cancellable>,
+                    |r| {
+                        if let Ok(v) = r {
+                            tracing::info!("showcase: document: {}", v.to_str());
+                        }
+                    },
+                );
+            }
+        }
+        (None, None) => tracing::info!("showcase: no focus"),
+    }
 }
 
 fn map_event(account_id: u32, event: WorkerEvent) -> AppMsg {
@@ -19671,6 +20317,12 @@ fn map_event(account_id: u32, event: WorkerEvent) -> AppMsg {
             AppMsg::FolderUnreadByPath { account_id, path, unread }
         }
         WorkerEvent::SeenSettled { path, uid } => AppMsg::SeenSettled { account_id, path, uid },
+        WorkerEvent::MovesSettled { path, uids } => AppMsg::MovesSettled { account_id, path, uids },
+        WorkerEvent::RawExported { token, raw } => AppMsg::RawExported { token, raw },
+        WorkerEvent::RawImported { token, result } => AppMsg::RawImported { token, result },
+        WorkerEvent::Gone { message_id, path, uid } => {
+            AppMsg::MessageGone { account_id, message_id, path, uid }
+        }
         WorkerEvent::RefsRepaired { folder_id } => {
             AppMsg::RefsRepaired { account_id, folder_id }
         }
@@ -19705,14 +20357,14 @@ fn map_event(account_id: u32, event: WorkerEvent) -> AppMsg {
 }
 
 thread_local! {
-    /// Reloads the scheme-dependent provider with the colours the live theme
+    /// Reloads the scheme-dependent provider with the colors the live theme
     /// answers with now (see [`install_scheme_css`]).
     static SCHEME_REFRESH: std::cell::RefCell<Option<Box<dyn Fn()>>> =
         const { std::cell::RefCell::new(None) };
 }
 
-/// Re-read the theme's colours into the scheme-dependent CSS, for a change
-/// that moves them without flipping the colour scheme.
+/// Re-read the theme's colors into the scheme-dependent CSS, for a change
+/// that moves them without flipping the color scheme.
 fn refresh_scheme_css() {
     SCHEME_REFRESH.with(|slot| {
         if let Some(refresh) = slot.borrow().as_ref() {
@@ -19721,7 +20373,7 @@ fn refresh_scheme_css() {
     });
 }
 
-/// Styles that branch on the colour scheme, which static CSS cannot do: a
+/// Styles that branch on the color scheme, which static CSS cannot do: a
 /// dedicated provider (above the static stylesheet's priority) carries the
 /// scheme-dependent values and reloads whenever the scheme flips.
 ///
@@ -19733,7 +20385,7 @@ fn refresh_scheme_css() {
 ///   live theme (#148) rather than the stock GNOME values, so a custom theme
 ///   carries through to the composer like it does to the reader.
 ///
-/// `window` is only where the theme's named colours are read from.
+/// `window` is only where the theme's named colors are read from.
 fn install_scheme_css(window: &impl IsA<gtk::Widget>) {
     let provider = gtk::CssProvider::new();
     if let Some(display) = gtk::gdk::Display::default() {
@@ -19764,7 +20416,7 @@ fn install_scheme_css(window: &impl IsA<gtk::Widget>) {
     };
     let style = adw::StyleManager::default();
     apply(&provider, style.is_dark());
-    // A theme change moves the same colours without any scheme flip, so the
+    // A theme change moves the same colors without any scheme flip, so the
     // provider has to be reloadable on demand as well (AppMsg::SetTheme).
     SCHEME_REFRESH.with(|slot| {
         let provider = provider.clone();
@@ -19774,7 +20426,7 @@ fn install_scheme_css(window: &impl IsA<gtk::Widget>) {
         }));
     });
     style.connect_dark_notify(move |sm| {
-        // The theme's named colours are re-resolved after this signal, not
+        // The theme's named colors are re-resolved after this signal, not
         // before it: read them now and the lookup answers for the scheme
         // just left (a light-grey composer in dark mode). Apply once the
         // main loop comes round, as the reader does through its own message.

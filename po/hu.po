@@ -471,11 +471,28 @@ msgstr ""
 msgid "No {v1} folder available"
 msgstr "Nem érhető el {v1} mappa"
 
-msgid "One message stayed put — mail can't be moved between accounts"
+#, fuzzy
+msgid "One message could not be moved to {account}: {error}"
+msgid_plural "{n} messages could not be moved to {account}: {error}"
+msgstr[0] ""
+"Egy üzenet a helyén maradt — a levelek nem helyezhetők át fiókok között"
+msgstr[1] ""
+"Egy üzenet a helyén maradt — a levelek nem helyezhetők át fiókok között"
+
+#, fuzzy
+msgid "Moving one message to {account}…"
+msgid_plural "Moving {n} messages to {account}…"
+msgstr[0] "Minden melléklet mentése egy mappába"
+msgstr[1] "Minden melléklet mentése egy mappába"
+
+#, fuzzy
+msgid "One message stayed put: this account can't take mail from another"
 msgstr ""
 "Egy üzenet a helyén maradt — a levelek nem helyezhetők át fiókok között"
 
-msgid "{foreign} messages stayed put — mail can't be moved between accounts"
+#, fuzzy
+msgid ""
+"{foreign} messages stayed put: this account can't take mail from another"
 msgstr ""
 "{foreign} üzenet a helyén maradt — a levelek nem helyezhetők át fiókok között"
 
@@ -930,6 +947,10 @@ msgstr "Ezen a számítógépen"
 msgid "CardDAV Address Book"
 msgstr "CardDAV-címjegyzék"
 
+#, fuzzy
+msgid "{date} at {time}"
+msgstr "Hétfő délelőtt (8:00)"
+
 msgid "Encrypted message"
 msgstr "Titkosított üzenet"
 
@@ -1141,7 +1162,7 @@ msgstr ""
 "Vireóban való használatához."
 
 msgid ""
-"Label messages with one or more coloured tags. Tags are stored on the mail "
+"Label messages with one or more colored tags. Tags are stored on the mail "
 "server as IMAP keywords, so Thunderbird and other clients show the same "
 "tags.\n"
 "\n"
@@ -1636,6 +1657,17 @@ msgstr "SMTP-jelszó"
 msgid "Test SMTP"
 msgstr "SMTP tesztelése"
 
+msgid "Automatic"
+msgstr "Automatikus"
+
+#. "Disabled", not "Automatic": the rows around it auto-detect a folder
+#. from the server's markings, and this one detects nothing. It is an
+#. override that is either set or not, and unset means the Sent folder
+#. above keeps taking the copies as it always has.
+#, fuzzy
+msgid "Disabled"
+msgstr "Táblázat"
+
 msgid "Microsoft 365 files its own copy in Sent Items; this cannot be changed."
 msgstr ""
 
@@ -1660,9 +1692,6 @@ msgstr "Fiók engedélyezése"
 
 msgid "Use this account in Hylki"
 msgstr "Fiók használata a Vireóban"
-
-msgid "Automatic"
-msgstr "Automatikus"
 
 msgid "Never"
 msgstr "Soha"
@@ -1737,7 +1766,7 @@ msgstr ""
 
 msgid ""
 "{n} tags are in use in your mailboxes but not set up here. Import them all, "
-"or choose which to add. Names and colours can be changed afterwards."
+"or choose which to add. Names and colors can be changed afterwards."
 msgstr ""
 
 msgid "Import Selected"
@@ -1773,13 +1802,13 @@ msgstr ""
 "A címke tárolása a kiszolgálón: betűk, számjegyek és a legtöbb írásjel, "
 "szóközök nélkül. A Thunderbird beépített címkéi a $label1–$label5."
 
-msgid "Colour"
+msgid "Color"
 msgstr "Szín"
 
-msgid "Custom colour…"
+msgid "Custom color…"
 msgstr "Egyéni szín…"
 
-msgid "Tag Colour"
+msgid "Tag Color"
 msgstr "Címke színe"
 
 msgid "Edit Filter"
@@ -1871,6 +1900,12 @@ msgstr "Nincsenek mellékletek"
 #, fuzzy
 msgid "Hide the attachments"
 msgstr "Nincsenek mellékletek"
+
+#, fuzzy
+msgid "{n} attachment"
+msgid_plural "{n} attachments"
+msgstr[0] "Nincsenek mellékletek"
+msgstr[1] "Nincsenek mellékletek"
 
 msgid "Thumbnail size"
 msgstr "Bélyegkép mérete"
@@ -2032,12 +2067,6 @@ msgstr "{n} üzenet törlése"
 
 msgid "Loading more…"
 msgstr "Továbbiak betöltése…"
-
-#, fuzzy
-msgid "{n} attachment"
-msgid_plural "{n} attachments"
-msgstr[0] "Nincsenek mellékletek"
-msgstr[1] "Nincsenek mellékletek"
 
 #, fuzzy
 msgid "{shown} of {total}"
@@ -2937,7 +2966,7 @@ msgstr ""
 
 msgid ""
 "Reader View shows a message as its text alone, in one plain format, without "
-"the sender's layout, colours and fonts."
+"the sender's layout, colors and fonts."
 msgstr ""
 
 msgid "Reader View"
@@ -3013,10 +3042,10 @@ msgstr "Üzenet törlése"
 msgid "View source"
 msgstr "Forrás megtekintése"
 
-msgid "Back to my fonts and colours"
+msgid "Back to my fonts and colors"
 msgstr "Vissza a saját betűtípusaimhoz és színeimhez"
 
-msgid "Show the sender's fonts and colours"
+msgid "Show the sender's fonts and colors"
 msgstr "Feladó betűtípusainak és színeinek megjelenítése"
 
 #, fuzzy
@@ -3282,14 +3311,11 @@ msgstr[1] "{n} kulcs importálva."
 msgid "That key was already in your keyring."
 msgstr "Ez a kulcs már a kulcstartóján volt."
 
-msgid "Hylki icon"
-msgstr "Hylki ikonja"
+msgid "App icon"
+msgstr "Alkalmazásikon"
 
-msgid "Envelope, white"
-msgstr "Boríték, fehér"
-
-msgid "Envelope, black"
-msgstr "Boríték, fekete"
+msgid "Symbolic"
+msgstr ""
 
 msgid "Follow system"
 msgstr "Rendszer követése"
@@ -3417,6 +3443,17 @@ msgstr ""
 msgid "Installed, but not this version's copy"
 msgstr ""
 
+#, fuzzy
+msgid "Search Settings"
+msgstr "Beállítások"
+
+#, fuzzy
+msgid "Search settings"
+msgstr "Feladók keresése"
+
+msgid "No Results"
+msgstr ""
+
 msgid "Save the filter?"
 msgstr ""
 
@@ -3502,9 +3539,6 @@ msgstr ""
 
 msgid "Theme"
 msgstr ""
-
-msgid "App icon"
-msgstr "Alkalmazásikon"
 
 msgid "This window opens to"
 msgstr "Az ablak megnyitási helye"
@@ -3615,6 +3649,12 @@ msgstr ""
 msgid ""
 "Every message opens in Reader View. The header's switch still changes the "
 "one on screen."
+msgstr ""
+
+msgid "Open at startup"
+msgstr ""
+
+msgid "What the window shows when Hylki starts."
 msgstr ""
 
 msgid "Accounts in the sidebar"
@@ -3748,7 +3788,7 @@ msgstr ""
 
 msgid ""
 "Mark folders and accounts that have unread mail with a dot in the accent "
-"colour rather than the number of messages. The count stays in the tooltip."
+"color rather than the number of messages. The count stays in the tooltip."
 msgstr ""
 
 msgid "Fold up expanded items"
@@ -3996,13 +4036,13 @@ msgstr "Üzenet betűtípusa"
 msgid "The interface font unless another is chosen."
 msgstr "A kezelőfelület betűtípusa, hacsak nincs más kiválasztva."
 
-msgid "Use my own colours"
+msgid "Use my own colors"
 msgstr "Saját színek használata"
 
 msgid ""
-"Ignore the text and background colours senders set, so every message reads "
-"in the same black or white on the reader's ground. Pictures are kept; links "
-"take the accent colour."
+"Ignore the text and background colors senders set, so every message reads in "
+"the same black or white on the reader's ground. Pictures are kept; links "
+"take the accent color."
 msgstr ""
 "A feladók által beállított szöveg- és háttérszínek figyelmen kívül hagyása, "
 "hogy minden üzenet azonos fekete vagy fehér színnel jelenjen meg az olvasó "
@@ -4289,9 +4329,9 @@ msgid "Tray icon"
 msgstr "Tálcaikon"
 
 msgid ""
-"The Hylki icon, or a plain envelope in white or black to match the panel."
+"The app icon in full color, or its symbolic outline, which the panel draws "
+"in its own color."
 msgstr ""
-"A Hylki ikonja, vagy a panelhez illő fehér vagy fekete egyszerű boríték."
 
 msgid "Unread mail in the tray menu"
 msgstr "Olvasatlan levelek a tálcamenüben"
@@ -4424,6 +4464,16 @@ msgstr "A fiókok felett"
 
 msgid "Below the accounts"
 msgstr "A fiókok alatt"
+
+msgid "All Inboxes"
+msgstr "Összes beérkezett"
+
+msgid "The last account's inbox"
+msgstr ""
+
+#, fuzzy
+msgid "The last folder"
+msgstr "Ez a mappa"
 
 msgid "Left"
 msgstr "Balra"
@@ -4796,7 +4846,7 @@ msgstr ""
 msgid "Message text shown under each subject"
 msgstr "Az egyes tárgyak alatt megjelenő üzenetszöveg"
 
-msgid "Colourful initials beside each message"
+msgid "Colorful initials beside each message"
 msgstr "Színes monogramok minden üzenet mellett"
 
 msgid "Conversation view"
@@ -5001,6 +5051,13 @@ msgstr ""
 msgid "Send failed: {e}"
 msgstr "A küldés sikertelen: {e}"
 
+#, fuzzy
+msgid "Could not reach the server"
+msgstr "A mappa nem hozható létre: {e}"
+
+msgid "That folder is not on the server"
+msgstr ""
+
 msgid "the server's reply could not be read (it began: {reply})"
 msgstr ""
 
@@ -5075,8 +5132,14 @@ msgstr "Az üzenet nem törölhető: {e}"
 msgid "POP3 accounts don't support folders"
 msgstr "A POP3-fiókok nem támogatják a mappákat"
 
+msgid "A POP3 account can't receive mail from another account"
+msgstr ""
+
 msgid "Inbox"
 msgstr "Beérkezett üzenetek"
+
+msgid "A Microsoft account can't receive mail from another account"
+msgstr ""
 
 msgid "Email Client"
 msgstr "Levelezőkliens"
@@ -5146,7 +5209,7 @@ msgstr "Olvasás"
 
 #, fuzzy
 msgid ""
-"Reader View, your own font and colours, and per-message light or dark "
+"Reader View, your own font and colors, and per-message light or dark "
 "rendering"
 msgstr ""
 "A távoli tartalom alapértelmezés szerint blokkolva; üzenetenként világos "
@@ -5185,6 +5248,20 @@ msgstr "Az egységes beérkezett nézet világos módban"
 
 msgid "Hyprlab"
 msgstr "Hyprlab"
+
+#~ msgid "Hylki icon"
+#~ msgstr "Hylki ikonja"
+
+#~ msgid "Envelope, white"
+#~ msgstr "Boríték, fehér"
+
+#~ msgid "Envelope, black"
+#~ msgstr "Boríték, fekete"
+
+#~ msgid ""
+#~ "The Hylki icon, or a plain envelope in white or black to match the panel."
+#~ msgstr ""
+#~ "A Hylki ikonja, vagy a panelhez illő fehér vagy fekete egyszerű boríték."
 
 #~ msgid ""
 #~ "Google and Microsoft accounts sign in through GNOME Settings → Online "
@@ -5359,9 +5436,9 @@ msgstr "Hyprlab"
 #~ msgstr "Fiók hozzáadása"
 
 #~ msgid ""
-#~ "Label messages with one or more coloured tags. Tags are stored on the "
-#~ "mail server as IMAP keywords, so Thunderbird and other clients show the "
-#~ "same tags."
+#~ "Label messages with one or more colored tags. Tags are stored on the mail "
+#~ "server as IMAP keywords, so Thunderbird and other clients show the same "
+#~ "tags."
 #~ msgstr ""
 #~ "Üzenetek címkézése egy vagy több színes címkével. A címkék IMAP-"
 #~ "kulcsszóként tárolódnak a levelezőkiszolgálón, így a Thunderbird és más "
@@ -5416,9 +5493,6 @@ msgstr "Hyprlab"
 
 #~ msgid "Account name, such as Personal Dropbox (optional)"
 #~ msgstr "Fióknév, például Személyes Dropbox (nem kötelező)"
-
-#~ msgid "All Inboxes"
-#~ msgstr "Összes beérkezett"
 
 #~ msgid "All Inboxes unread count"
 #~ msgstr "Az Összes beérkezett olvasatlan üzeneteinek száma"

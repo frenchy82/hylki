@@ -475,12 +475,35 @@ msgstr ""
 msgid "No {v1} folder available"
 msgstr "Нет доступной папки {v1}"
 
-msgid "One message stayed put — mail can't be moved between accounts"
+#, fuzzy
+msgid "One message could not be moved to {account}: {error}"
+msgid_plural "{n} messages could not be moved to {account}: {error}"
+msgstr[0] ""
+"Одно сообщение осталось на месте — почту нельзя перемещать между учётными "
+"записями"
+msgstr[1] ""
+"Одно сообщение осталось на месте — почту нельзя перемещать между учётными "
+"записями"
+msgstr[2] ""
+"Одно сообщение осталось на месте — почту нельзя перемещать между учётными "
+"записями"
+
+#, fuzzy
+msgid "Moving one message to {account}…"
+msgid_plural "Moving {n} messages to {account}…"
+msgstr[0] "Переместить это сообщение в папку"
+msgstr[1] "Переместить это сообщение в папку"
+msgstr[2] "Переместить это сообщение в папку"
+
+#, fuzzy
+msgid "One message stayed put: this account can't take mail from another"
 msgstr ""
 "Одно сообщение осталось на месте — почту нельзя перемещать между учётными "
 "записями"
 
-msgid "{foreign} messages stayed put — mail can't be moved between accounts"
+#, fuzzy
+msgid ""
+"{foreign} messages stayed put: this account can't take mail from another"
 msgstr ""
 "{foreign} сообщений осталось на месте — почту нельзя перемещать между "
 "учётными записями"
@@ -943,6 +966,10 @@ msgstr "На этом компьютере"
 msgid "CardDAV Address Book"
 msgstr "Адресная книга CardDAV"
 
+#, fuzzy
+msgid "{date} at {time}"
+msgstr "В понедельник утром ({time})"
+
 msgid "Encrypted message"
 msgstr "Зашифрованное сообщение"
 
@@ -1150,7 +1177,7 @@ msgstr ""
 "её в Hylki."
 
 msgid ""
-"Label messages with one or more coloured tags. Tags are stored on the mail "
+"Label messages with one or more colored tags. Tags are stored on the mail "
 "server as IMAP keywords, so Thunderbird and other clients show the same "
 "tags.\n"
 "\n"
@@ -1654,6 +1681,17 @@ msgstr "Пароль SMTP"
 msgid "Test SMTP"
 msgstr "Проверить SMTP"
 
+msgid "Automatic"
+msgstr "Автоматически"
+
+#. "Disabled", not "Automatic": the rows around it auto-detect a folder
+#. from the server's markings, and this one detects nothing. It is an
+#. override that is either set or not, and unset means the Sent folder
+#. above keeps taking the copies as it always has.
+#, fuzzy
+msgid "Disabled"
+msgstr "Таблица"
+
 msgid "Microsoft 365 files its own copy in Sent Items; this cannot be changed."
 msgstr ""
 
@@ -1677,9 +1715,6 @@ msgstr "Включить эту учётную запись"
 
 msgid "Use this account in Hylki"
 msgstr "Использовать эту учётную запись в Hylki"
-
-msgid "Automatic"
-msgstr "Автоматически"
 
 msgid "Never"
 msgstr "Никогда"
@@ -1752,7 +1787,7 @@ msgstr "Найденные теги"
 
 msgid ""
 "{n} tags are in use in your mailboxes but not set up here. Import them all, "
-"or choose which to add. Names and colours can be changed afterwards."
+"or choose which to add. Names and colors can be changed afterwards."
 msgstr ""
 "В ваших почтовых ящиках используется {n} тегов, но они здесь не настроены. "
 "Импортируйте их все или выберите, какие добавить. Названия и цвета можно "
@@ -1793,13 +1828,13 @@ msgstr ""
 "Как метка хранится на сервере: буквы, цифры и большинство знаков препинания, "
 "без пробелов. Встроенные теги Thunderbird — от $label1 до $label5."
 
-msgid "Colour"
+msgid "Color"
 msgstr "Цвет"
 
-msgid "Custom colour…"
+msgid "Custom color…"
 msgstr "Другой цвет…"
 
-msgid "Tag Colour"
+msgid "Tag Color"
 msgstr "Цвет тега"
 
 msgid "Edit Filter"
@@ -1888,6 +1923,12 @@ msgstr "Нет вложений"
 #, fuzzy
 msgid "Hide the attachments"
 msgstr "Нет вложений"
+
+msgid "{n} attachment"
+msgid_plural "{n} attachments"
+msgstr[0] "{n} вложение"
+msgstr[1] "{n} вложения"
+msgstr[2] "{n} вложений"
 
 msgid "Thumbnail size"
 msgstr "Размер миниатюр"
@@ -2047,12 +2088,6 @@ msgstr "Индексация {n} сообщений…"
 
 msgid "Loading more…"
 msgstr "Загрузка остальных…"
-
-msgid "{n} attachment"
-msgid_plural "{n} attachments"
-msgstr[0] "{n} вложение"
-msgstr[1] "{n} вложения"
-msgstr[2] "{n} вложений"
 
 #, fuzzy
 msgid "{shown} of {total}"
@@ -2947,7 +2982,7 @@ msgstr ""
 
 msgid ""
 "Reader View shows a message as its text alone, in one plain format, without "
-"the sender's layout, colours and fonts."
+"the sender's layout, colors and fonts."
 msgstr ""
 
 msgid "Reader View"
@@ -3022,10 +3057,10 @@ msgstr "Удалить это сообщение"
 msgid "View source"
 msgstr "Просмотреть исходный текст"
 
-msgid "Back to my fonts and colours"
+msgid "Back to my fonts and colors"
 msgstr "Вернуться к моим шрифтам и цветам"
 
-msgid "Show the sender's fonts and colours"
+msgid "Show the sender's fonts and colors"
 msgstr "Показывать шрифты и цвета отправителя"
 
 msgid "Show remote content"
@@ -3293,14 +3328,11 @@ msgstr[2] "Импортировано {n} ключей."
 msgid "That key was already in your keyring."
 msgstr "Этот ключ уже находился в вашей связке ключей."
 
-msgid "Hylki icon"
-msgstr "Иконка Hylki"
+msgid "App icon"
+msgstr "Иконка приложения"
 
-msgid "Envelope, white"
-msgstr "Конверт, белый"
-
-msgid "Envelope, black"
-msgstr "Конверт, чёрный"
+msgid "Symbolic"
+msgstr ""
 
 msgid "Follow system"
 msgstr "Как в системе"
@@ -3430,6 +3462,17 @@ msgstr ""
 msgid "Installed, but not this version's copy"
 msgstr "Установлено, но используется копия от другой версии"
 
+#, fuzzy
+msgid "Search Settings"
+msgstr "Настройки"
+
+#, fuzzy
+msgid "Search settings"
+msgstr "Поиск отправителей"
+
+msgid "No Results"
+msgstr ""
+
 msgid "Save the filter?"
 msgstr "Сохранить фильтр?"
 
@@ -3518,9 +3561,6 @@ msgstr ""
 
 msgid "Theme"
 msgstr "Тема"
-
-msgid "App icon"
-msgstr "Иконка приложения"
 
 msgid "This window opens to"
 msgstr "При открытии окна показывать"
@@ -3637,6 +3677,12 @@ msgstr ""
 msgid ""
 "Every message opens in Reader View. The header's switch still changes the "
 "one on screen."
+msgstr ""
+
+msgid "Open at startup"
+msgstr ""
+
+msgid "What the window shows when Hylki starts."
 msgstr ""
 
 msgid "Accounts in the sidebar"
@@ -3802,7 +3848,7 @@ msgstr "Точки непрочитанного вместо счётчиков"
 
 msgid ""
 "Mark folders and accounts that have unread mail with a dot in the accent "
-"colour rather than the number of messages. The count stays in the tooltip."
+"color rather than the number of messages. The count stays in the tooltip."
 msgstr ""
 "Отмечать папки и учётные записи с непрочитанными письмами точкой акцентного "
 "цвета вместо количества сообщений. Число писем останется во всплывающей "
@@ -4064,13 +4110,13 @@ msgstr "Шрифт сообщений"
 msgid "The interface font unless another is chosen."
 msgstr "Шрифт интерфейса, если не выбран другой."
 
-msgid "Use my own colours"
+msgid "Use my own colors"
 msgstr "Использовать свои цвета"
 
 msgid ""
-"Ignore the text and background colours senders set, so every message reads "
-"in the same black or white on the reader's ground. Pictures are kept; links "
-"take the accent colour."
+"Ignore the text and background colors senders set, so every message reads in "
+"the same black or white on the reader's ground. Pictures are kept; links "
+"take the accent color."
 msgstr ""
 "Игнорировать цвета текста и фона, заданные отправителем, чтобы все сообщения "
 "читались в единой чёрной или белой гамме. Изображения сохраняются, а ссылки "
@@ -4364,9 +4410,9 @@ msgid "Tray icon"
 msgstr "Значок в трее"
 
 msgid ""
-"The Hylki icon, or a plain envelope in white or black to match the panel."
+"The app icon in full color, or its symbolic outline, which the panel draws "
+"in its own color."
 msgstr ""
-"Иконка Hylki или обычный конверт белого либо чёрного цвета под стиль панели."
 
 msgid "Unread mail in the tray menu"
 msgstr "Непрочитанная почта в меню трея"
@@ -4511,6 +4557,17 @@ msgstr "Над учётными записями"
 
 msgid "Below the accounts"
 msgstr "Под учётными записями"
+
+msgid "All Inboxes"
+msgstr "Все входящие"
+
+#, fuzzy
+msgid "The last account's inbox"
+msgstr "Список учётных записей под строкой «Входящие»."
+
+#, fuzzy
+msgid "The last folder"
+msgstr "Эта папка"
 
 msgid "Left"
 msgstr "Слева"
@@ -4877,7 +4934,7 @@ msgstr "Популярные параметры — всё это можно и�
 msgid "Message text shown under each subject"
 msgstr "Текст письма, отображаемый под его темой"
 
-msgid "Colourful initials beside each message"
+msgid "Colorful initials beside each message"
 msgstr "Цветные инициалы рядом с каждым сообщением"
 
 msgid "Conversation view"
@@ -5080,6 +5137,14 @@ msgstr ""
 msgid "Send failed: {e}"
 msgstr "Не удалось отправить: {e}"
 
+#, fuzzy
+msgid "Could not reach the server"
+msgstr "Не удалось создать папку: {e}"
+
+#, fuzzy
+msgid "That folder is not on the server"
+msgstr "Папки под строкой «Фильтры»."
+
 msgid "the server's reply could not be read (it began: {reply})"
 msgstr ""
 
@@ -5157,8 +5222,14 @@ msgstr "Не удалось удалить сообщение: {e}"
 msgid "POP3 accounts don't support folders"
 msgstr "Учётные записи POP3 не поддерживают папки"
 
+msgid "A POP3 account can't receive mail from another account"
+msgstr ""
+
 msgid "Inbox"
 msgstr "Входящие"
+
+msgid "A Microsoft account can't receive mail from another account"
+msgstr ""
 
 msgid "Email Client"
 msgstr "Почтовый клиент"
@@ -5228,7 +5299,7 @@ msgstr "Чтение"
 
 #, fuzzy
 msgid ""
-"Reader View, your own font and colours, and per-message light or dark "
+"Reader View, your own font and colors, and per-message light or dark "
 "rendering"
 msgstr ""
 "Удалённое содержимое блокируется по умолчанию; чтение каждого письма в "
@@ -5267,6 +5338,21 @@ msgstr "Общие входящие в светлом режиме"
 
 msgid "Hyprlab"
 msgstr "Hyprlab"
+
+#~ msgid "Hylki icon"
+#~ msgstr "Иконка Hylki"
+
+#~ msgid "Envelope, white"
+#~ msgstr "Конверт, белый"
+
+#~ msgid "Envelope, black"
+#~ msgstr "Конверт, чёрный"
+
+#~ msgid ""
+#~ "The Hylki icon, or a plain envelope in white or black to match the panel."
+#~ msgstr ""
+#~ "Иконка Hylki или обычный конверт белого либо чёрного цвета под стиль "
+#~ "панели."
 
 #~ msgid ""
 #~ "Google and Microsoft accounts sign in through GNOME Settings → Online "
@@ -5393,9 +5479,6 @@ msgstr "Hyprlab"
 #~ "клику на стрелку) либо выше или ниже учётных записей в виде отдельного "
 #~ "заголовка со своим списком."
 
-#~ msgid "The account list under Inboxes."
-#~ msgstr "Список учётных записей под строкой «Входящие»."
-
 #~ msgid ""
 #~ "Swipe (mouse-drag or trackpad) a message left to delete it and right to "
 #~ "archive it. Turning this on swaps the two: left archives, right deletes."
@@ -5455,9 +5538,6 @@ msgstr "Hyprlab"
 
 #~ msgid "Show name initials instead of an emoji"
 #~ msgstr "Показывать инициалы имени вместо эмодзи"
-
-#~ msgid "All Inboxes"
-#~ msgstr "Все входящие"
 
 #~ msgid "All Inboxes unread count"
 #~ msgstr "Счётчик непрочитанных в «Все входящие»"

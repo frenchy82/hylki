@@ -185,9 +185,9 @@ pub struct AccountsWindow {
     /// Avatar picture chosen in the editor (#162): its file name under the
     /// avatars directory.
     avatar: Option<String>,
-    /// The preview circle's colour, as a stylesheet on the display.
+    /// The preview circle's color, as a stylesheet on the display.
     preview_css: gtk::CssProvider,
-    /// The account list's per-row disc colours (`.acct-list-color-N`),
+    /// The account list's per-row disc colors (`.acct-list-color-N`),
     /// rewritten on every rebuild.
     list_css: gtk::CssProvider,
     /// The "Circle shows" toggle: a picture, or initials/emoji. Only the
@@ -375,7 +375,7 @@ pub enum AccountsInput {
 }
 
 /// One keyword the tag finder proposes as a tag: the tag as it would be
-/// added (name, keyword, colour) and where the keyword was seen.
+/// added (name, keyword, color) and where the keyword was seen.
 #[derive(Debug, Clone)]
 pub struct TagProposal {
     pub tag: crate::config::Tag,
@@ -681,11 +681,11 @@ impl Component for AccountsWindow {
                             },
 
                             add_named[Some("tags")] = &adw::PreferencesPage {
-                                // Tags (#71): a name and colour per keyword.
+                                // Tags (#71): a name and color per keyword.
                                 add = &adw::PreferencesGroup {
                                     set_title: &i18n("Tags"),
                                     set_description: Some(
-                                        i18n("Label messages with one or more coloured tags. \
+                                        i18n("Label messages with one or more colored tags. \
                                          Tags are stored on the mail server as IMAP keywords, \
                                          so Thunderbird and other clients show the same tags.\n\n\
                                          Drag a tag to reorder: the order here is the sidebar's, \
@@ -846,7 +846,7 @@ impl Component for AccountsWindow {
                                         },
 
                                         add_suffix = &gtk::Button {
-                                            set_icon_name: "co.hyprlab.Hylki-list-add-symbolic",
+                                            set_icon_name: "list-add-symbolic",
                                             set_tooltip_text: Some(i18n("Allow this sender").as_str()),
                                             set_valign: gtk::Align::Center,
                                             add_css_class: "flat",
@@ -886,7 +886,7 @@ impl Component for AccountsWindow {
                                         },
 
                                         add_suffix = &gtk::Button {
-                                            set_icon_name: "co.hyprlab.Hylki-list-add-symbolic",
+                                            set_icon_name: "list-add-symbolic",
                                             set_tooltip_text: Some(i18n("Block this sender").as_str()),
                                             set_valign: gtk::Align::Center,
                                             add_css_class: "flat",
@@ -1175,7 +1175,7 @@ impl Component for AccountsWindow {
 
                                 // The sidebar circle as it will look, as the
                                 // group's first row (a non-row child would
-                                // land below the rows): the accent colour,
+                                // land below the rows): the accent color,
                                 // and the picture, emoji or initials it
                                 // shows. Not a button — it neither activates
                                 // nor selects.
@@ -1205,7 +1205,7 @@ impl Component for AccountsWindow {
                                     },
                                 },
 
-                                // The accent stands on its own: it colours
+                                // The accent stands on its own: it colors
                                 // the circle, and marks the account's
                                 // folders and mail elsewhere.
                                 adw::ActionRow {
@@ -1683,7 +1683,7 @@ impl Component for AccountsWindow {
         widgets.email_row.connect_changed(move |_| es.input(AccountsInput::EmailChanged));
 
         // The preview circle follows the name, label and email (its
-        // initials) as they are typed; its colour is a stylesheet.
+        // initials) as they are typed; its color is a stylesheet.
         if let Some(display) = gtk::gdk::Display::default() {
             gtk::style_context_add_provider_for_display(
                 &display,
@@ -1921,7 +1921,7 @@ impl Component for AccountsWindow {
                 widgets.remove_btn.set_visible(true);
                 // GNOME owns a GOA account's connection outright, so the server
                 // and credential section isn't shown at all — only what Hylki
-                // owns (name, label, colour, signature, aliases) plus the email
+                // owns (name, label, color, signature, aliases) plus the email
                 // for identification. `apply_provider` re-shows what applies the
                 // next time a native account or the add-form opens the editor.
                 widgets.provider_row.set_visible(!is_goa);
@@ -2318,7 +2318,7 @@ impl Component for AccountsWindow {
                         account.oauth_settings = orig.oauth_settings.clone();
                         // GNOME Online Accounts is the source of truth for these;
                         // Hylki keeps only what it owns (display name, signature,
-                        // colour, emoji, label).
+                        // color, emoji, label).
                         account.email = orig.email.clone();
                         account.protocol = orig.protocol;
                         account.imap_host = orig.imap_host.clone();
@@ -2382,7 +2382,7 @@ impl Component for AccountsWindow {
                 // A GOA account's connection fields were all restored from the
                 // original above (GNOME owns them; a Graph account rightly has
                 // no IMAP host at all) — validating them would only block the
-                // fields Hylki does own: label, signature, colour, aliases.
+                // fields Hylki does own: label, signature, color, aliases.
                 let is_goa_edit = account.goa_id.is_some();
                 if !is_goa_edit
                     && (account.imap_host.is_empty()
@@ -2920,11 +2920,11 @@ impl AccountsWindow {
             }));
 
             // A dim pencil says "activate to edit"; the trash button removes.
-            let edit = gtk::Image::from_icon_name("co.hyprlab.Hylki-document-edit-symbolic");
+            let edit = gtk::Image::from_icon_name("document-edit-symbolic");
             edit.add_css_class("dim-label");
             row.add_suffix(&edit);
 
-            let remove = gtk::Button::from_icon_name("co.hyprlab.Hylki-user-trash-symbolic");
+            let remove = gtk::Button::from_icon_name("user-trash-symbolic");
             remove.set_valign(gtk::Align::Center);
             remove.add_css_class("flat");
             remove.set_tooltip_text(Some(i18n("Remove this alias").as_str()));
@@ -3103,7 +3103,8 @@ impl AccountsWindow {
             .cloned()
             .collect();
         self.populate_sent_copy_combo(widgets, acc, &all);
-        let mut labels: Vec<&str> = vec!["Automatic"];
+        let automatic = i18n("Automatic");
+        let mut labels: Vec<&str> = vec![automatic.as_str()];
         labels.extend(choices.iter().map(|(_, display)| display.as_str()));
         self.folder_paths = choices.iter().map(|(path, _)| path.clone()).collect();
         for (role, row) in [
@@ -3137,7 +3138,8 @@ impl AccountsWindow {
         // from the server's markings, and this one detects nothing. It is an
         // override that is either set or not, and unset means the Sent folder
         // above keeps taking the copies as it always has.
-        let mut labels: Vec<&str> = vec!["Disabled"];
+        let disabled = i18n("Disabled");
+        let mut labels: Vec<&str> = vec![disabled.as_str()];
         labels.extend(all.iter().map(|(_, display)| display.as_str()));
         self.sent_copy_paths = all.iter().map(|(path, _)| path.clone()).collect();
         let row = &widgets.folder_sent_copy_row;
@@ -3249,11 +3251,11 @@ impl AccountsWindow {
             let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 12);
             hbox.add_css_class("account-list-row");
 
-            let handle = gtk::Image::from_icon_name("co.hyprlab.Hylki-list-drag-handle-symbolic");
+            let handle = gtk::Image::from_icon_name("list-drag-handle-symbolic");
             handle.add_css_class("dim-label");
             hbox.append(&handle);
 
-            // The account's circle, as the sidebar draws it: its colour (or
+            // The account's circle, as the sidebar draws it: its color (or
             // the palette accent it would get), and its picture, emoji or
             // initials — the label first, then the name, then the address.
             let account_id = pos as u32 + 1;
@@ -3374,7 +3376,7 @@ impl AccountsWindow {
             });
             hbox.append(&toggle);
 
-            let next = gtk::Image::from_icon_name("co.hyprlab.Hylki-go-next-symbolic");
+            let next = gtk::Image::from_icon_name("go-next-symbolic");
             next.add_css_class("dim-label");
             hbox.append(&next);
 
@@ -3723,7 +3725,7 @@ impl AccountsWindow {
     }
 
     /// Redraw the editor's preview circle and show the rows of the chosen
-    /// mode: the accent colour, and the picture, emoji or initials the
+    /// mode: the accent color, and the picture, emoji or initials the
     /// sidebar would show — the initials from the label, else the name,
     /// else the email, as the sidebar derives them.
     /// Everything an account editor holds, as one comparable string: what
@@ -4074,7 +4076,7 @@ fn fill_editor(widgets: &AccountsWindowWidgets, acc: &AccountConfig) {
 /// credentials from the system; editing them here would either be overwritten
 /// the next time GOA is read, or quietly disagree with what the rest of the
 /// desktop uses. What stays editable is what Hylki owns: the sender's display
-/// name, signature, colour, emoji and label.
+/// name, signature, color, emoji and label.
 fn set_connection_editable(widgets: &AccountsWindowWidgets, editable: bool) {
     for row in [
         widgets.email_row.upcast_ref::<gtk::Widget>(),
@@ -4445,14 +4447,14 @@ impl AccountsWindow {
             // The trash button removes; a chevron says the row opens the
             // rule's editor, as the account and cloud rows do. The rule's
             // "count unread" switch lives in the editor.
-            let rm = gtk::Button::from_icon_name("co.hyprlab.Hylki-user-trash-symbolic");
+            let rm = gtk::Button::from_icon_name("user-trash-symbolic");
             rm.add_css_class("flat");
             rm.set_valign(gtk::Align::Center);
             rm.set_tooltip_text(Some(i18n("Remove filter").as_str()));
             let s = sender.clone();
             rm.connect_clicked(move |_| s.input(AccountsInput::RemoveFilter(i)));
             row.add_suffix(&rm);
-            let next = gtk::Image::from_icon_name("co.hyprlab.Hylki-go-next-symbolic");
+            let next = gtk::Image::from_icon_name("go-next-symbolic");
             next.add_css_class("dim-label");
             row.add_suffix(&next);
             list.append(&row);
@@ -4486,7 +4488,7 @@ impl AccountsWindow {
     }
 
     /// The tag finder's report: every keyword found that is not a tag here
-    /// yet, each with a proposed name and colour, ticked to be imported.
+    /// yet, each with a proposed name and color, ticked to be imported.
     /// "Import All" takes the lot; "Import Selected" only the ticked ones.
     fn show_tag_findings(
         &self,
@@ -4514,7 +4516,7 @@ impl AccountsWindow {
             Some(
                 i18n_f(
                     "{n} tags are in use in your mailboxes but not set up here. \
-                     Import them all, or choose which to add. Names and colours \
+                     Import them all, or choose which to add. Names and colors \
                      can be changed afterwards.",
                     &[("n", &n.to_string())],
                 )
@@ -4588,7 +4590,7 @@ impl AccountsWindow {
         dialog.present();
     }
 
-    /// The Tags list (#71): a row per tag — its colour as a disc, its name,
+    /// The Tags list (#71): a row per tag — its color as a disc, its name,
     /// its keyword — activating to edit, with a remove button.
     fn rebuild_tag_rows(&self, sender: &ComponentSender<Self>) {
         let Some(list) = &self.tags_list else { return };
@@ -4603,7 +4605,7 @@ impl AccountsWindow {
             row.connect_activated(move |_| s.input(AccountsInput::EditTag(i)));
             row.set_title(&gtk::glib::markup_escape_text(&t.name));
             row.set_subtitle(&gtk::glib::markup_escape_text(&t.keyword));
-            let handle = gtk::Image::from_icon_name("co.hyprlab.Hylki-list-drag-handle-symbolic");
+            let handle = gtk::Image::from_icon_name("list-drag-handle-symbolic");
             handle.add_css_class("dim-label");
             row.add_prefix(&handle);
             row.add_prefix(&crate::ui::context_menu::swatch_widget(&t.color, true));
@@ -4638,7 +4640,7 @@ impl AccountsWindow {
                 }
             });
             row.add_controller(drop);
-            let rm = gtk::Button::from_icon_name("co.hyprlab.Hylki-user-trash-symbolic");
+            let rm = gtk::Button::from_icon_name("user-trash-symbolic");
             rm.add_css_class("flat");
             rm.set_valign(gtk::Align::Center);
             rm.set_tooltip_text(Some(i18n("Remove tag").as_str()));
@@ -4647,14 +4649,14 @@ impl AccountsWindow {
             row.add_suffix(&rm);
             // A chevron says the row opens the tag's editor, as the
             // account and cloud rows do.
-            let next = gtk::Image::from_icon_name("co.hyprlab.Hylki-go-next-symbolic");
+            let next = gtk::Image::from_icon_name("go-next-symbolic");
             next.add_css_class("dim-label");
             row.add_suffix(&next);
             list.append(&row);
         }
     }
 
-    /// The tag dialog (#71): name, colour, keyword. The keyword follows the
+    /// The tag dialog (#71): name, color, keyword. The keyword follows the
     /// name until the user edits it; editing an existing tag keeps its
     /// keyword unless changed, since the messages carry the keyword, not
     /// the name.
@@ -4715,7 +4717,7 @@ impl AccountsWindow {
             });
         }
 
-        // The colour: one disc per palette entry on a line of its own under
+        // The color: one disc per palette entry on a line of its own under
         // a caption (beside a title, eight discs left the title wrapping one
         // letter per line in the dialog's width). Toggle buttons in one
         // group behave as radios; the pressed one is the choice.
@@ -4727,7 +4729,7 @@ impl AccountsWindow {
         color_box.set_margin_bottom(10);
         color_box.set_margin_start(12);
         color_box.set_margin_end(12);
-        let color_label = gtk::Label::new(Some(i18n("Colour").as_str()));
+        let color_label = gtk::Label::new(Some(i18n("Color").as_str()));
         color_label.set_halign(gtk::Align::Start);
         color_label.add_css_class("caption");
         color_label.add_css_class("dim-label");
@@ -4766,10 +4768,10 @@ impl AccountsWindow {
             });
             swatches.insert(&toggle, -1);
         }
-        // A ninth disc for any colour (#147): a hue wheel until one is picked,
-        // then the picked colour. Pressing it opens the GTK colour chooser;
+        // A ninth disc for any color (#147): a hue wheel until one is picked,
+        // then the picked color. Pressing it opens the GTK color chooser;
         // it stays a member of the toggle group so a palette pick clears it.
-        // A tag edited with a colour outside the palette opens on this disc.
+        // A tag edited with a color outside the palette opens on this disc.
         {
             let custom: Option<String> = edit
                 .as_ref()
@@ -4779,7 +4781,7 @@ impl AccountsWindow {
             toggle.add_css_class("flat");
             toggle.add_css_class("circular");
             toggle.set_child(Some(&custom_swatch_widget(custom.as_deref())));
-            toggle.set_tooltip_text(Some(i18n("Custom colour…").as_str()));
+            toggle.set_tooltip_text(Some(i18n("Custom color…").as_str()));
             if let Some(f) = &first {
                 toggle.set_group(Some(f));
             }
@@ -4790,7 +4792,7 @@ impl AccountsWindow {
             toggle.connect_clicked(move |t| {
                 let picker = gtk::ColorDialog::new();
                 picker.set_with_alpha(false);
-                picker.set_title(&i18n("Tag Colour"));
+                picker.set_title(&i18n("Tag Color"));
                 let initial = gtk::gdk::RGBA::parse(chosen.borrow().as_str())
                     .unwrap_or(gtk::gdk::RGBA::new(0.5, 0.5, 0.5, 1.0));
                 let t = t.clone();
@@ -4815,7 +4817,7 @@ impl AccountsWindow {
                         }
                         Err(_) => {
                             // Cancelled: back to whatever the choice was. A
-                            // palette colour lives in its own disc; a custom
+                            // palette color lives in its own disc; a custom
                             // one picked earlier stays on this disc.
                             if custom.borrow().is_none() {
                                 let back = chosen.borrow().clone();
@@ -5010,7 +5012,7 @@ impl AccountsWindow {
             let match_names = match_names.clone();
             move |init: Option<&crate::config::FilterCondition>| -> CondRows {
                 let group = adw::PreferencesGroup::new();
-                let remove = gtk::Button::from_icon_name("co.hyprlab.Hylki-user-trash-symbolic");
+                let remove = gtk::Button::from_icon_name("user-trash-symbolic");
                 remove.add_css_class("flat");
                 remove.set_valign(gtk::Align::Center);
                 remove.set_tooltip_text(Some(i18n("Remove condition").as_str()));
@@ -5068,7 +5070,7 @@ impl AccountsWindow {
         let add_row = adw::ActionRow::new();
         add_row.set_title(&i18n("Add Condition"));
         add_row.set_activatable(true);
-        add_row.add_prefix(&gtk::Image::from_icon_name("co.hyprlab.Hylki-list-add-symbolic"));
+        add_row.add_prefix(&gtk::Image::from_icon_name("list-add-symbolic"));
         // All or any (#192); only shown once there is a second condition.
         let combine_row = adw::ComboRow::new();
         combine_row.set_title(&i18n("Condition matching"));
@@ -5376,8 +5378,8 @@ struct CondRows {
     value: adw::EntryRow,
 }
 
-/// The tag dialog's "any colour" disc (#147): a hue wheel while no custom
-/// colour is chosen, the chosen colour as a filled disc once one is.
+/// The tag dialog's "any color" disc (#147): a hue wheel while no custom
+/// color is chosen, the chosen color as a filled disc once one is.
 fn custom_swatch_widget(color: Option<&str>) -> gtk::DrawingArea {
     if let Some(c) = color {
         return crate::ui::context_menu::swatch_widget(c, true);
@@ -5403,7 +5405,7 @@ fn custom_swatch_widget(color: Option<&str>) -> gtk::DrawingArea {
     area
 }
 
-/// A fully saturated colour at hue `h` (0..1) as RGB in 0..1.
+/// A fully saturated color at hue `h` (0..1) as RGB in 0..1.
 fn hue_rgb(h: f64) -> (f64, f64, f64) {
     let h6 = h * 6.0;
     let x = 1.0 - ((h6 % 2.0) - 1.0).abs();

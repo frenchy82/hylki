@@ -460,6 +460,19 @@ pub enum MailRequest {
     RefreshUnread,
     /// Force a fresh connection and re-list folders (e.g. after a failure).
     Reconnect,
+    /// Sent right behind a request that takes mail out of `path` (a move,
+    /// a purge, Spam/Not Spam) and answered with
+    /// [`WorkerEvent::MovesSettled`] once the worker reaches it. The worker
+    /// serves requests in order, so by then the one ahead has run, however
+    /// it went; until then a folder list fetched earlier still shows the
+    /// mail, and the app keeps it off screen (#255).
+    Settle { path: String, uids: Vec<u32> },
+    /// Moving mail to another account (#265), step one: the message's raw
+    /// bytes, answered with [`WorkerEvent::RawExported`] carrying `token`.
+    ExportRaw { token: u64, path: String, uid: u32 },
+    /// Step two, on the receiving account: add `raw` to `path` with its
+    /// read and starred state, answered with [`WorkerEvent::RawImported`].
+    ImportRaw { token: u64, path: String, raw: Vec<u8>, seen: bool, flagged: bool },
     /// The tag finder (Settings → Tags → Find Tags…): report every keyword
     /// in use across the account's folders as one
     /// [`WorkerEvent::KeywordsFound`] — always answered, even when empty, so
@@ -597,6 +610,13 @@ pub enum WorkerEvent {
     /// A `SetSeen` has been stored (or failed): the app stops holding its own
     /// read state for that message over what the server reports.
     SeenSettled { path: String, uid: u32 },
+    /// The answer to [`MailRequest::Settle`]: whatever took these messages
+    /// out of `path` has been done or has failed.
+    MovesSettled { path: String, uids: Vec<u32> },
+    /// The answer to [`MailRequest::ExportRaw`].
+    RawExported { token: u64, raw: Result<Vec<u8>, String> },
+    /// The answer to [`MailRequest::ImportRaw`].
+    RawImported { token: u64, result: Result<(), String> },
     /// `path` is the folder the body was read from. A UID is unique only within
     /// its folder, so without it a background prefetch's body can be applied to a
     /// different message that happens to share the number.
@@ -604,6 +624,9 @@ pub enum WorkerEvent {
     /// is showing may now group differently.
     RefsRepaired { folder_id: u32 },
     Body { message_id: u32, path: String, body: String },
+    /// A message the cache listed is no longer in `path` on the server; its
+    /// cached row has been dropped.
+    Gone { message_id: u32, path: String, uid: u32 },
     /// Whether the message's From: address survived its provider's SPF/DKIM/DMARC
     /// checks. Sent right after `Body`, from the same fetch.
     SenderChecked { message_id: u32, check: crate::models::SenderCheck },
@@ -640,7 +663,7 @@ pub enum WorkerEvent {
 
 type ImapSession = Session<TlsStream<TcpStream>>;
 
-/// A distinct accent colour per account (cycles through a small palette).
+/// A distinct accent color per account (cycles through a small palette).
 pub(crate) fn accent_for(account_id: u32) -> &'static str {
     const PALETTE: [&str; 6] = [
         "#3584e4", "#2ec27e", "#e5a50a", "#e66100", "#9141ac", "#c01c28",
@@ -1389,6 +1412,11 @@ async fn run_imap(
             session = connect_and_list(account_id, &account, cache.as_ref(), &emit).await;
             continue;
         }
+        // Answered offline too: a move that could not run has still settled.
+        if let MailRequest::Settle { path, uids } = req {
+            emit(WorkerEvent::MovesSettled { path, uids });
+            continue;
+        }
 
         // Bodies of a `LoadBodies` batch that the disk cache couldn't answer, so
         // the network arm below fetches only those.
@@ -1664,18 +1692,12 @@ async fn run_imap(
                     let uids: Vec<u32> = group.iter().map(|(_, uid)| *uid).collect();
                     match load_bodies_retry(&mut session, &account, &path, &uids).await {
                         Ok(mut fetched) => {
+                            // The UIDs the server answered without a body.
+                            let mut missing: Vec<(u32, u32)> = Vec::new();
                             for (message_id, uid) in group {
                                 let Some((body, check, has_attachments)) = fetched.remove(uid)
                                 else {
-                                    // The server answered the set but not this
-                                    // UID — the message is gone from the folder.
-                                    // Say so in place, rather than leaving one
-                                    // member of the conversation blank forever.
-                                    emit(WorkerEvent::Body {
-                                        message_id: *message_id,
-                                        path: path.clone(),
-                                        body: "(empty message)".to_string(),
-                                    });
+                                    missing.push((*message_id, *uid));
                                     continue;
                                 };
                                 if let Some(c) = cache.as_ref() {
@@ -1699,6 +1721,12 @@ async fn run_imap(
                                 } else {
                                     WorkerEvent::NoAttachments { message_id: *message_id }
                                 });
+                            }
+                            if !missing.is_empty() {
+                                settle_missing_bodies(
+                                    &mut session, account_id, &path, missing, cache.as_ref(), &emit,
+                                )
+                                .await;
                             }
                         }
                         Err(e) => {
@@ -1862,6 +1890,7 @@ async fn run_imap(
                 match mark_spam(sess, &path, uid, &dest).await {
                     Ok(created) => {
                         if let Some(c) = cache.as_ref() {
+                            drop_gmail_label_copies(c, account_id, &account, &path, &[uid], &dest);
                             c.delete_message(account_id, &path, uid);
                         }
                         if created {
@@ -1923,11 +1952,24 @@ async fn run_imap(
                 emit(WorkerEvent::BulkComplete);
             }
 
+            MailRequest::ExportRaw { token, path, uid } => {
+                let raw = load_raw_retry(&mut session, &account, &path, uid).await.map_err(|e| e.to_string());
+                emit(WorkerEvent::RawExported { token, raw });
+            }
+
+            MailRequest::ImportRaw { token, path, raw, seen, flagged } => {
+                let sess = session.as_mut().unwrap();
+                let flags = import_flags(seen, flagged);
+                let result = append_msg(sess, &path, flags.as_deref(), &raw).await.map_err(|e| e.to_string());
+                emit(WorkerEvent::RawImported { token, result });
+            }
+
             MailRequest::MoveMessage { path, uid, dest } => {
                 let sess = session.as_mut().unwrap();
                 match move_message(sess, &path, uid, &dest).await {
                     Ok(created) => {
                         if let Some(c) = cache.as_ref() {
+                            drop_gmail_label_copies(c, account_id, &account, &path, &[uid], &dest);
                             c.delete_message(account_id, &path, uid);
                         }
                         if created {
@@ -1949,6 +1991,7 @@ async fn run_imap(
                 match move_messages(sess, &path, &uids, &dest).await {
                     Ok(created) => {
                         if let Some(c) = cache.as_ref() {
+                            drop_gmail_label_copies(c, account_id, &account, &path, &uids, &dest);
                             for uid in &uids {
                                 c.delete_message(account_id, &path, *uid);
                             }
@@ -2586,7 +2629,7 @@ async fn run_imap(
                 }
             }
 
-            MailRequest::Reconnect => unreachable!("handled above"),
+            MailRequest::Reconnect | MailRequest::Settle { .. } => unreachable!("handled above"),
         }
 
         if lost {
@@ -2767,6 +2810,76 @@ async fn load_bodies_retry(
     res
 }
 
+/// After a move into Trash or Spam on Gmail, drop the moved mail's copies
+/// under its other labels from the cache: Gmail removed them with the move
+/// (see [`Cache::drop_label_copies`]). Any other server keeps a copy in
+/// another folder as a message of its own, so nothing is dropped there.
+fn drop_gmail_label_copies(
+    cache: &Cache,
+    account_id: u32,
+    account: &AccountConfig,
+    from: &str,
+    uids: &[u32],
+    dest: &str,
+) {
+    let folders = cache.load_folders(account_id);
+    let host = account.imap_host.to_ascii_lowercase();
+    let labels = host.ends_with("gmail.com")
+        || host.ends_with("googlemail.com")
+        || folders
+            .iter()
+            .any(|f| f.path.starts_with("[Gmail]/") || f.path.starts_with("[Google Mail]/"));
+    let binned = folders
+        .iter()
+        .any(|f| f.path == dest && matches!(f.kind, FolderKind::Trash | FolderKind::Junk));
+    if labels && binned {
+        let n = cache.drop_label_copies(account_id, from, uids, dest);
+        if n > 0 {
+            tracing::debug!("dropped {n} cached label copies of mail moved to {dest}");
+        }
+    }
+}
+
+/// Account for conversation members a body fetch came back without.
+///
+/// Either the message is no longer in the folder, or the server lists it and
+/// will not hand it over (#226). The cache cannot tell: Gmail takes every
+/// label off mail moved to Trash, so the copies cached under All Mail and
+/// the other labels outlive it there, and a reply to a deleted conversation
+/// brought them all back as blank cards (#257). The server is asked which
+/// of the UIDs it still has. The ones it does not are dropped from the
+/// cache and the reader is told they are gone; the rest keep the
+/// placeholder, which says in place that the server gave nothing.
+async fn settle_missing_bodies(
+    session: &mut Option<ImapSession>,
+    account_id: u32,
+    path: &str,
+    missing: Vec<(u32, u32)>,
+    cache: Option<&Cache>,
+    emit: &impl Fn(WorkerEvent),
+) {
+    let uids: Vec<u32> = missing.iter().map(|(_, uid)| *uid).collect();
+    // The folder is still selected from the fetch.
+    let present = match session.as_mut() {
+        Some(sess) => search_uids(sess, format!("UID {}", uid_set(&uids))).await.ok(),
+        None => None,
+    };
+    for (message_id, uid) in missing {
+        if present.as_ref().is_some_and(|p| !p.contains(&uid)) {
+            if let Some(c) = cache {
+                c.delete_message(account_id, path, uid);
+            }
+            emit(WorkerEvent::Gone { message_id, path: path.to_string(), uid });
+        } else {
+            emit(WorkerEvent::Body {
+                message_id,
+                path: path.to_string(),
+                body: "(empty message)".to_string(),
+            });
+        }
+    }
+}
+
 async fn load_source_retry(
     session: &mut Option<ImapSession>,
     account: &AccountConfig,
@@ -2840,11 +2953,11 @@ async fn run_one_prefetch(
                     emit(WorkerEvent::Status(prefetch_status(prefetch.len())));
                     return;
                 }
-                let (_, check, _) = render_raw(&raw);
+                let (body, check, _) = render_raw(&raw);
                 let (attachments, _) = attachments_of(&raw);
                 emit(WorkerEvent::SenderChecked { message_id: uid, check: check.clone() });
                 if let Some(c) = cache {
-                    c.save_body(account_id, &path, uid, &render_raw(&raw).0);
+                    c.save_body(account_id, &path, uid, &body);
                     c.save_sender_check(account_id, &path, uid, &check);
                     c.save_attachments(account_id, &path, uid, &attachments);
                     // Mark as fetched so it's never re-downloaded to re-check,
@@ -4883,12 +4996,12 @@ pub fn is_system_keyword(keyword: &str) -> bool {
         "$isnotification", "$ismailinglist", "$istrusted", "$notification",
     ];
     SYSTEM.contains(&k.as_str())
-        // Apple Mail's flag colours and Fastmail's internal annotations.
+        // Apple Mail's flag colors and Fastmail's internal annotations.
         || k.starts_with("$mailflagbit")
         || k.starts_with("$x-me-")
 }
 
-/// A Microsoft 365 category colour (`preset0`…`preset24`) as the nearest
+/// A Microsoft 365 category color (`preset0`…`preset24`) as the nearest
 /// `#rrggbb`; `None` for "none" or anything unknown.
 fn graph_preset_color(preset: &str) -> Option<String> {
     let hex = match preset.to_ascii_lowercase().as_str() {
@@ -5056,6 +5169,13 @@ async fn box_status(session: &mut ImapSession, path: &str, items: &str) -> Resul
     let r = session.status(path, items).await;
     wired(&cmd, &r);
     r
+}
+
+/// The IMAP flags a message moved in from another account (#265) keeps.
+fn import_flags(seen: bool, flagged: bool) -> Option<String> {
+    let flags: Vec<&str> =
+        [(seen, "\\Seen"), (flagged, "\\Flagged")].into_iter().filter(|(on, _)| *on).map(|(_, f)| f).collect();
+    (!flags.is_empty()).then(|| format!("({})", flags.join(" ")))
 }
 
 async fn append_msg(
@@ -8538,10 +8658,20 @@ async fn run_pop3(
                 emit(WorkerEvent::BulkComplete);
             }
 
+            // A POP3 move deletes the message on the server: there is
+            // nothing to bring back. Answered all the same, so the app's
+            // busy indicator stops.
+            MailRequest::UndoMove { .. } => {
+                emit(WorkerEvent::Error {
+                    text: i18n("POP3 accounts don't support folders"),
+                    connectivity: false,
+                });
+                emit(WorkerEvent::BulkComplete);
+            }
+
             // POP3 has no folders beyond the inbox.
             MailRequest::CreateFolder { .. }
             | MailRequest::RenameFolder { .. }
-            | MailRequest::UndoMove { .. }
             | MailRequest::DeleteFolder { .. }
             | MailRequest::SetHiddenFolders { .. }
             | MailRequest::SaveDraft { .. } => {
@@ -8620,6 +8750,19 @@ async fn run_pop3(
             MailRequest::Reconnect => {
                 emit(WorkerEvent::Folders(pop3_folders(account_id)));
             }
+
+            MailRequest::Settle { path, uids } => emit(WorkerEvent::MovesSettled { path, uids }),
+
+            MailRequest::ExportRaw { token, uid, .. } => {
+                let raw = pop3_fetch_raw(&account, uid).await;
+                emit(WorkerEvent::RawExported { token, raw });
+            }
+
+            // POP3 has nowhere to put mail: it is never offered as a destination.
+            MailRequest::ImportRaw { token, .. } => emit(WorkerEvent::RawImported {
+                token,
+                result: Err(i18n("A POP3 account can't receive mail from another account")),
+            }),
         }
     }
 }
@@ -8888,7 +9031,6 @@ async fn run_mock(
             | MailRequest::MarkSpam { .. }
             | MailRequest::MarkHam { .. }
             | MailRequest::MoveMessage { .. }
-            | MailRequest::UndoMove { .. }
             | MailRequest::CreateFolder { .. }
             | MailRequest::RenameFolder { .. }
             | MailRequest::DeleteFolder { .. }
@@ -8906,10 +9048,31 @@ async fn run_mock(
             // The demo backend sends nothing, so its Outbox is always empty.
             MailRequest::LoadOutbox => emit(WorkerEvent::Outbox { items: Vec::new() }),
             // Signal completion so the demo's bulk spinner clears.
-            MailRequest::MoveMessages { .. } | MailRequest::MarkHamMany { .. } | MailRequest::PurgeMessages { .. } => {
+            MailRequest::MoveMessages { .. }
+            | MailRequest::MarkHamMany { .. }
+            | MailRequest::PurgeMessages { .. }
+            | MailRequest::UndoMove { .. } => {
                 emit(WorkerEvent::BulkComplete)
             }
             MailRequest::SaveDraft { .. } => emit(WorkerEvent::DraftSaved),
+            MailRequest::Settle { path, uids } => emit(WorkerEvent::MovesSettled { path, uids }),
+            MailRequest::ExportRaw { token, uid, .. } => emit(WorkerEvent::RawExported {
+                token,
+                // The sample's own raw form where it has one, else one made
+                // from what the list shows of it.
+                raw: crate::backend::demo_raw(uid)
+                    .or_else(|| {
+                        crate::backend::MockBackend::new().message(uid).map(|m| {
+                            format!(
+                                "From: {} <{}>\r\nSubject: {}\r\nDate: {}\r\n\r\n{}\r\n",
+                                m.from_name, m.from_addr, m.subject, m.date, m.body
+                            )
+                        })
+                    })
+                    .map(String::into_bytes)
+                    .ok_or_else(|| "no such demo message".to_string()),
+            }),
+            MailRequest::ImportRaw { token, .. } => emit(WorkerEvent::RawImported { token, result: Ok(()) }),
             // Pretend the send succeeded so the compose flow is demoable offline.
             MailRequest::Send { .. } => emit(WorkerEvent::Sent),
         }
@@ -9480,7 +9643,7 @@ fn consume_url(text: &str, start: usize) -> usize {
     start + trimmed.len()
 }
 
-/// Wrap plain text in a minimal, readable HTML document. Colours are left to
+/// Wrap plain text in a minimal, readable HTML document. Colors are left to
 /// the `color-scheme` the reader injects, so the message follows the
 /// light/dark theme — and no padding is baked in: the reader injects the
 /// default inset at render time, so it stays tunable without invalidating
@@ -9956,7 +10119,7 @@ async fn run_graph(
             }
             MailRequest::FindKeywords => {
                 // Categories are defined once per mailbox, with a name and a
-                // colour: the master list is the whole answer. Counts come
+                // color: the master list is the whole answer. Counts come
                 // from the cache, the only place Hylki has them.
                 let mut found: Vec<KeywordFinding> = Vec::new();
                 if let Some(token) = graph_token(&account, &emit).await {
@@ -10387,6 +10550,8 @@ async fn run_graph(
                         connectivity: false,
                     }),
                 }
+                // The app spins its busy indicator until an undo answers.
+                emit(WorkerEvent::BulkComplete);
             }
 
             MailRequest::CreateFolder { path } => {
@@ -10709,6 +10874,20 @@ async fn run_graph(
                         .await;
                 }
             }
+
+            MailRequest::Settle { path, uids } => emit(WorkerEvent::MovesSettled { path, uids }),
+
+            MailRequest::ExportRaw { token, path, uid } => {
+                let raw = graph_fetch_raw(&account, &mut state, &path, uid, &emit).await;
+                emit(WorkerEvent::RawExported { token, raw });
+            }
+
+            // Graph files a message posted to a folder as a draft; it is never
+            // offered as a destination.
+            MailRequest::ImportRaw { token, .. } => emit(WorkerEvent::RawImported {
+                token,
+                result: Err(i18n("A Microsoft account can't receive mail from another account")),
+            }),
         }
     }
 }
@@ -11202,6 +11381,74 @@ pub(super) fn sample_account() -> AccountConfig {
 mod tests {
 
     use super::*;
+
+    /// A message moved in from another account keeps its read and starred
+    /// state as IMAP flags, and asks for none when it had neither (#265).
+    #[test]
+    fn imported_mail_keeps_its_flags() {
+        assert_eq!(import_flags(true, true).as_deref(), Some("(\\Seen \\Flagged)"));
+        assert_eq!(import_flags(true, false).as_deref(), Some("(\\Seen)"));
+        assert_eq!(import_flags(false, true).as_deref(), Some("(\\Flagged)"));
+        assert_eq!(import_flags(false, false), None);
+    }
+
+    /// Where the time goes when a message is opened (#259): every step
+    /// `render_raw` takes, per message of a directory of saved .eml files.
+    /// `HYLKI_OPEN_TIMING=<dir> cargo test --release --bin hylki
+    /// worker::tests::open_timing -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn open_timing() {
+        use std::time::{Duration, Instant};
+        let Ok(dir) = std::env::var("HYLKI_OPEN_TIMING") else { return };
+        let mut paths: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|x| x == "eml"))
+            .collect();
+        paths.sort();
+        const STEPS: [&str; 7] = ["parse", "unsubscribe", "invite", "check", "pgp", "body", "attach"];
+        let mut total = [Duration::ZERO; 7];
+        let mut whole: Vec<(Duration, [Duration; 7], String, usize)> = Vec::new();
+        for p in &paths {
+            let raw = std::fs::read(p).unwrap();
+            let mut t = [Duration::ZERO; 7];
+            let mut lap = |i: usize, f: &mut dyn FnMut()| {
+                let at = Instant::now();
+                f();
+                t[i] = at.elapsed();
+            };
+            let mut parsed = None;
+            lap(0, &mut || parsed = mail_parser::MessageParser::default().parse(&raw[..]));
+            if let Some(m) = parsed.as_ref() {
+                lap(1, &mut || drop(crate::unsubscribe::detect(m)));
+                lap(2, &mut || drop(crate::invite::detect(m)));
+            }
+            lap(3, &mut || drop(crate::verify::check_sender(&raw)));
+            lap(4, &mut || drop(crate::pgp::detect(&raw)));
+            lap(5, &mut || drop(extract_body(&raw)));
+            lap(6, &mut || drop(extract_attachments(&raw)));
+            for i in 0..7 {
+                total[i] += t[i];
+            }
+            let sum: Duration = [t[3], t[4], t[5], t[6]].iter().sum();
+            whole.push((sum, t, p.file_name().unwrap().to_string_lossy().into_owned(), raw.len()));
+        }
+        let n = paths.len().max(1) as u32;
+        println!("{} messages", paths.len());
+        for (i, step) in STEPS.iter().enumerate() {
+            println!("{step:>12}: total {:>9.1?}  mean {:>8.2?}", total[i], total[i] / n);
+        }
+        whole.sort_by(|a, b| b.0.cmp(&a.0));
+        println!("slowest (render_raw ~ check+pgp+body+attach):");
+        for (sum, t, name, len) in whole.iter().take(12) {
+            println!(
+                "{sum:>9.2?} {name} {len}B  parse {:.2?} unsub {:.2?} invite {:.2?} check {:.2?} pgp {:.2?} body {:.2?} attach {:.2?}",
+                t[0], t[1], t[2], t[3], t[4], t[5], t[6]
+            );
+        }
+    }
 
     fn flagged_message(uid: u32) -> Message {
         Message {

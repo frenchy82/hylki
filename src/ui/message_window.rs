@@ -31,7 +31,7 @@ pub struct MessageWindowInit {
     pub attachments_loading: bool,
     /// Message-content theme override (`None` follows the system).
     pub content_dark: Option<bool>,
-    /// The reader's own fonts and colours over the senders' (#56).
+    /// The reader's own fonts and colors over the senders' (#56).
     pub reader_style: crate::config::ReaderStyle,
     /// Reader View (the main window's header toggle), followed here too.
     pub reader_mode: bool,
@@ -87,7 +87,7 @@ pub enum MessageWindowInput {
     AttachmentsPending,
     /// Update the message-content theme (`None` follows the system).
     SetContentTheme(Option<bool>),
-    /// The reader's own fonts and colours changed (#56).
+    /// The reader's own fonts and colors changed (#56).
     SetReaderStyle(crate::config::ReaderStyle),
     SetReaderMode(bool),
     SetZoom(u32),
@@ -221,32 +221,32 @@ impl Component for MessageWindow {
                         set_ellipsize: gtk::pango::EllipsizeMode::End,
                     },
                     pack_start = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-mail-reply-sender-symbolic",
+                        set_icon_name: "mail-reply-sender-symbolic",
                         set_tooltip_text: Some(i18n("Reply").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageWindowInput::Reply,
                     },
                     pack_start = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-mail-reply-all-symbolic",
+                        set_icon_name: "mail-reply-all-symbolic",
                         set_tooltip_text: Some(i18n("Reply All").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageWindowInput::ReplyAll,
                     },
                     pack_start = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-mail-forward-symbolic",
+                        set_icon_name: "mail-forward-symbolic",
                         set_tooltip_text: Some(i18n("Forward").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageWindowInput::Forward,
                     },
                     pack_start = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-contact-new-symbolic",
+                        set_icon_name: "contact-new-symbolic",
                         set_tooltip_text: Some(i18n("Add sender to Contacts").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageWindowInput::AddToContacts,
                     },
                     pack_start = &gtk::Button {
                         set_tooltip_text: Some(i18n("Flag").as_str()),
-                        set_icon_name: "co.hyprlab.Hylki-non-starred-symbolic",
+                        set_icon_name: "hylki-non-starred-symbolic",
                         #[watch]
                         set_css_classes: if model.msg.starred {
                             &["flat", "star-active"]
@@ -256,25 +256,25 @@ impl Component for MessageWindow {
                         connect_clicked => MessageWindowInput::ToggleStar,
                     },
                     pack_end = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-user-trash-symbolic",
+                        set_icon_name: "user-trash-symbolic",
                         set_tooltip_text: Some(i18n("Delete").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageWindowInput::Delete,
                     },
                     pack_end = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-code-symbolic",
+                        set_icon_name: "code-symbolic",
                         set_tooltip_text: Some(i18n("View Source").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageWindowInput::ViewSource,
                     },
                     pack_end = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-mail-mark-junk-symbolic",
+                        set_icon_name: "mail-mark-junk-symbolic",
                         set_tooltip_text: Some(i18n("Mark as Spam").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageWindowInput::Spam,
                     },
                     pack_end = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-mail-archive-symbolic",
+                        set_icon_name: "mail-archive-symbolic",
                         set_tooltip_text: Some(i18n("Archive").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageWindowInput::Archive,
@@ -288,7 +288,7 @@ impl Component for MessageWindow {
                         set_visible: model.attachments_loading,
                     },
                     pack_end = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-folder-download-symbolic",
+                        set_icon_name: "folder-download-symbolic",
                         set_tooltip_text: Some(i18n("Load attachments from server").as_str()),
                         add_css_class: "flat",
                         add_css_class: "attach-present",
@@ -297,7 +297,7 @@ impl Component for MessageWindow {
                         connect_clicked => MessageWindowInput::LoadAttachmentsNow,
                     },
                     pack_end = &gtk::MenuButton {
-                        set_icon_name: "co.hyprlab.Hylki-mail-attachment-symbolic",
+                        set_icon_name: "mail-attachment-symbolic",
                         set_tooltip_text: Some(i18n("Attachments").as_str()),
                         add_css_class: "flat",
                         add_css_class: "attach-present",

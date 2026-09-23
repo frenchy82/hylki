@@ -92,7 +92,7 @@ pub struct PrefInit {
     pub override_fonts: bool,
     /// That font, as a Pango description; empty = the interface font.
     pub reader_font: String,
-    /// Ignore the senders' text and background colours (#56).
+    /// Ignore the senders' text and background colors (#56).
     pub override_colors: bool,
     /// Plain-text messages in monospace (#181), and the font ("" = the
     /// desktop's monospace font).
@@ -105,7 +105,7 @@ pub struct PrefInit {
     /// Where the signature sits in a reply or forward (#237).
     pub signature_position: crate::config::SignaturePosition,
     pub app_theme: AppTheme,
-    /// The appearance theme's id ("system" for the stock GNOME colours).
+    /// The appearance theme's id ("system" for the stock GNOME colors).
     pub theme: String,
     pub notifications: bool,
     pub notification_content: bool,
@@ -121,6 +121,7 @@ pub struct PrefInit {
     pub filtered_placement: crate::config::SectionPlacement,
     pub tags_placement: crate::config::SectionPlacement,
     pub chevrons_left: bool,
+    pub start_view: crate::config::StartView,
     pub console_mode: bool,
     pub read_mark: crate::config::ReadMark,
     pub sidebar_hover_expand: bool,
@@ -161,9 +162,8 @@ pub struct PrefInit {
 
 /// App-chrome appearance options, in combo order.
 const TRAY_ICONS: &[(&str, TrayIcon)] = &[
-    (i18n_noop("Hylki icon"), TrayIcon::Hylki),
-    (i18n_noop("Envelope, white"), TrayIcon::EnvelopeLight),
-    (i18n_noop("Envelope, black"), TrayIcon::EnvelopeDark),
+    (i18n_noop("App icon"), TrayIcon::Hylki),
+    (i18n_noop("Symbolic"), TrayIcon::Symbolic),
 ];
 
 const APP_THEMES: &[(&str, AppTheme)] = &[
@@ -271,7 +271,7 @@ impl FactoryComponent for SenderRow {
         adw::ActionRow {
             set_title: &self.addr,
             add_suffix = &gtk::Button {
-                set_icon_name: "co.hyprlab.Hylki-user-trash-symbolic",
+                set_icon_name: "user-trash-symbolic",
                 set_valign: gtk::Align::Center,
                 set_tooltip_text: Some(i18n("Remove").as_str()),
                 add_css_class: "flat",
@@ -346,6 +346,8 @@ pub struct Preferences {
     deferred_pages: std::cell::RefCell<Vec<(String, gtk::Widget)>>,
     /// The sidebar list, for selecting a category from update().
     side_list: Option<gtk::ListBox>,
+    /// The settings search in the sidebar (#260).
+    search: Option<SettingsSearch>,
     /// The content pane's page, whose title names the chosen category.
     content_page: Option<adw::NavigationPage>,
     /// The split view, to bring the content forward when collapsed.
@@ -641,28 +643,28 @@ const SIDE_PAGES: &[(&str, &[SidePage])] = &[
     (
         i18n_noop("Accounts"),
         &[
-            SidePage { id: "accounts", title: i18n_noop("Mail Accounts"), icon: "co.hyprlab.Hylki-avatar-default-symbolic", accounts: true },
-            SidePage { id: "tags", title: i18n_noop("Tags"), icon: "co.hyprlab.Hylki-tag-outline-symbolic", accounts: true },
-            SidePage { id: "filters", title: i18n_noop("Filters"), icon: "co.hyprlab.Hylki-filter-folder-symbolic", accounts: true },
-            SidePage { id: "senders", title: i18n_noop("Senders"), icon: "co.hyprlab.Hylki-contact-new-symbolic", accounts: true },
-            SidePage { id: "openpgp", title: i18n_noop("OpenPGP"), icon: "co.hyprlab.Hylki-channel-secure-symbolic", accounts: false },
-            SidePage { id: "cloud", title: i18n_noop("Cloud Storage"), icon: "co.hyprlab.Hylki-cloud-symbolic", accounts: false },
+            SidePage { id: "accounts", title: i18n_noop("Mail Accounts"), icon: "avatar-default-symbolic", accounts: true },
+            SidePage { id: "tags", title: i18n_noop("Tags"), icon: "tag-outline-symbolic", accounts: true },
+            SidePage { id: "filters", title: i18n_noop("Filters"), icon: "filter-folder-symbolic", accounts: true },
+            SidePage { id: "senders", title: i18n_noop("Senders"), icon: "contact-new-symbolic", accounts: true },
+            SidePage { id: "openpgp", title: i18n_noop("OpenPGP"), icon: "channel-secure-symbolic", accounts: false },
+            SidePage { id: "cloud", title: i18n_noop("Cloud Storage"), icon: "cloud-symbolic", accounts: false },
         ],
     ),
     (
         i18n_noop("Settings"),
         &[
-            SidePage { id: "general", title: i18n_noop("General"), icon: "co.hyprlab.Hylki-puzzle-piece-symbolic", accounts: false },
-            SidePage { id: "appearance", title: i18n_noop("Appearance"), icon: "co.hyprlab.Hylki-preferences-desktop-appearance-symbolic", accounts: false },
-            SidePage { id: "sidebar", title: i18n_noop("Sidebar"), icon: "co.hyprlab.Hylki-sidebar-show-symbolic", accounts: false },
-            SidePage { id: "list", title: i18n_noop("Message List"), icon: "co.hyprlab.Hylki-view-list-bullet-symbolic", accounts: false },
-            SidePage { id: "conversations", title: i18n_noop("Conversations"), icon: "co.hyprlab.Hylki-chat-bubbles-text-symbolic", accounts: false },
-            SidePage { id: "reading", title: i18n_noop("Reading"), icon: "co.hyprlab.Hylki-mail-read-symbolic", accounts: false },
-            SidePage { id: "composing", title: i18n_noop("Composing"), icon: "co.hyprlab.Hylki-document-edit-symbolic", accounts: false },
-            SidePage { id: "privacy", title: i18n_noop("Privacy"), icon: "co.hyprlab.Hylki-security-high-symbolic", accounts: false },
-            SidePage { id: "datetime", title: i18n_noop("Date and Time"), icon: "co.hyprlab.Hylki-x-office-calendar-symbolic", accounts: false },
-            SidePage { id: "system", title: i18n_noop("System"), icon: "co.hyprlab.Hylki-applications-system-symbolic", accounts: false },
-            SidePage { id: "backup", title: i18n_noop("Backup"), icon: "co.hyprlab.Hylki-document-save-symbolic", accounts: false },
+            SidePage { id: "general", title: i18n_noop("General"), icon: "puzzle-piece-symbolic", accounts: false },
+            SidePage { id: "appearance", title: i18n_noop("Appearance"), icon: "preferences-desktop-appearance-symbolic", accounts: false },
+            SidePage { id: "sidebar", title: i18n_noop("Sidebar"), icon: "sidebar-show-symbolic", accounts: false },
+            SidePage { id: "list", title: i18n_noop("Message List"), icon: "view-list-bullet-symbolic", accounts: false },
+            SidePage { id: "conversations", title: i18n_noop("Conversations"), icon: "chat-bubbles-text-symbolic", accounts: false },
+            SidePage { id: "reading", title: i18n_noop("Reading"), icon: "hylki-mail-read-symbolic", accounts: false },
+            SidePage { id: "composing", title: i18n_noop("Composing"), icon: "document-edit-symbolic", accounts: false },
+            SidePage { id: "privacy", title: i18n_noop("Privacy"), icon: "security-high-symbolic", accounts: false },
+            SidePage { id: "datetime", title: i18n_noop("Date and Time"), icon: "x-office-calendar-symbolic", accounts: false },
+            SidePage { id: "system", title: i18n_noop("System"), icon: "applications-system-symbolic", accounts: false },
+            SidePage { id: "backup", title: i18n_noop("Backup"), icon: "document-save-symbolic", accounts: false },
         ],
     ),
 ];
@@ -859,6 +861,7 @@ pub enum PrefInput {
     /// The main menu flipped "Show Accounts": the switch follows.
     SetShowAccounts(bool),
     ChangeChevronSide(u32),
+    ChangeStartView(u32),
     ChangeFilteredPlacement(u32),
     ChangeTagsPlacement(u32),
     ToggleSidebarHoverExpand(bool),
@@ -913,6 +916,11 @@ pub enum PrefInput {
     /// Put the deferred pages back into the stack (scheduled after the
     /// first paint).
     MountPages,
+    /// The settings search (#260): the text typed, and a result picked.
+    Search(String),
+    SearchPick(usize),
+    /// Ctrl+F: open the search, or close it when open.
+    ToggleSearch,
     /// A fresh accounts panel for this open (the window is kept between
     /// opens; the panel is rebuilt over the current accounts).
     SetAccountsPanel { panel: gtk::Widget, sender: relm4::Sender<crate::ui::accounts::AccountsInput> },
@@ -992,6 +1000,7 @@ pub enum PrefOutput {
     SetUnifiedTags(bool),
     SetShowAccounts(bool),
     SetChevronsLeft(bool),
+    SetStartView(crate::config::StartView),
     SetFilteredPlacement(crate::config::SectionPlacement),
     SetTagsPlacement(crate::config::SectionPlacement),
     SetConsoleMode(bool),
@@ -1031,6 +1040,317 @@ pub enum PrefOutput {
     SetReplyPosition(crate::config::ReplyPosition),
     SetSignaturePosition(crate::config::SignaturePosition),
     Closed,
+}
+
+/// One searchable place in Settings (#260): a row or a group, found by its
+/// own title and subtitle as shown, so a search works in the language the
+/// app is in.
+#[derive(Clone)]
+struct SearchHit {
+    page: &'static str,
+    title: String,
+    /// Where it sits: the page, and the group or expander row around it.
+    place: String,
+    /// Lowercased title, subtitle and place, to match against.
+    haystack: String,
+    widget: gtk::glib::WeakRef<gtk::Widget>,
+}
+
+/// The settings search (#260): a search button in the sidebar's header
+/// opens an entry above the categories; while it holds text the sidebar
+/// lists the matching rows instead, and picking one shows its page and
+/// scrolls to it. libadwaita's own preferences search only covers pages
+/// added to its own window, which this two-pane window is not.
+struct SettingsSearch {
+    bar: gtk::SearchBar,
+    entry: gtk::SearchEntry,
+    /// "pages" (the categories), "results" or "empty".
+    stack: gtk::Stack,
+    results: gtk::ListBox,
+    /// Built on the first search, from the pages as they are then; rows
+    /// hidden later are skipped when matching.
+    index: std::cell::RefCell<Option<Vec<SearchHit>>>,
+    /// What the results list shows, by position.
+    shown: std::cell::RefCell<Vec<SearchHit>>,
+}
+
+/// Most results listed at once.
+const SEARCH_LIMIT: usize = 60;
+
+impl SettingsSearch {
+    fn build(
+        toolbar: &adw::ToolbarView,
+        header: &adw::HeaderBar,
+        scroller: &gtk::ScrolledWindow,
+        window: &gtk::Widget,
+        sender: &ComponentSender<Preferences>,
+    ) -> Self {
+        let button = gtk::ToggleButton::new();
+        button.set_icon_name("system-search-symbolic");
+        button.set_tooltip_text(Some(&i18n("Search Settings")));
+        header.pack_start(&button);
+
+        let entry = gtk::SearchEntry::new();
+        entry.set_placeholder_text(Some(&i18n("Search settings")));
+        entry.set_hexpand(true);
+        let bar = gtk::SearchBar::new();
+        bar.set_child(Some(&entry));
+        bar.connect_entry(&entry);
+        bar.bind_property("search-mode-enabled", &button, "active")
+            .bidirectional()
+            .sync_create()
+            .build();
+        toolbar.add_top_bar(&bar);
+
+        let results = gtk::ListBox::new();
+        results.add_css_class("navigation-sidebar");
+        results.set_selection_mode(gtk::SelectionMode::None);
+        let s = sender.clone();
+        results.connect_row_activated(move |_, row| {
+            s.input(PrefInput::SearchPick(row.index() as usize));
+        });
+        let results_scroller = gtk::ScrolledWindow::new();
+        results_scroller.set_hscrollbar_policy(gtk::PolicyType::Never);
+        results_scroller.set_child(Some(&results));
+
+        let empty = adw::StatusPage::new();
+        empty.set_icon_name(Some("system-search-symbolic"));
+        empty.set_title(&i18n("No Results"));
+        empty.add_css_class("compact");
+
+        let stack = gtk::Stack::new();
+        toolbar.set_content(None::<&gtk::Widget>);
+        stack.add_named(scroller, Some("pages"));
+        stack.add_named(&results_scroller, Some("results"));
+        stack.add_named(&empty, Some("empty"));
+        toolbar.set_content(Some(&stack));
+
+        let s = sender.clone();
+        entry.connect_search_changed(move |e| s.input(PrefInput::Search(e.text().to_string())));
+        // Closing the search puts the categories back.
+        let e = entry.clone();
+        bar.connect_search_mode_enabled_notify(move |bar| {
+            if !bar.is_search_mode() {
+                e.set_text("");
+            }
+        });
+
+        let shortcuts = gtk::ShortcutController::new();
+        shortcuts.set_scope(gtk::ShortcutScope::Global);
+        let s = sender.clone();
+        shortcuts.add_shortcut(gtk::Shortcut::new(
+            gtk::ShortcutTrigger::parse_string("<Control>f"),
+            Some(gtk::CallbackAction::new(move |_, _| {
+                s.input(PrefInput::ToggleSearch);
+                gtk::glib::Propagation::Stop
+            })),
+        ));
+        // Escape closes the search from anywhere in the window, not only
+        // from its entry: after a result is picked, focus is on the list or
+        // the page. With the search closed the key goes on as before.
+        let b = bar.clone();
+        shortcuts.add_shortcut(gtk::Shortcut::new(
+            gtk::ShortcutTrigger::parse_string("Escape"),
+            Some(gtk::CallbackAction::new(move |_, _| {
+                if b.is_search_mode() {
+                    b.set_search_mode(false);
+                    gtk::glib::Propagation::Stop
+                } else {
+                    gtk::glib::Propagation::Proceed
+                }
+            })),
+        ));
+        window.add_controller(shortcuts);
+
+        Self {
+            bar,
+            entry,
+            stack,
+            results,
+            index: std::cell::RefCell::new(None),
+            shown: std::cell::RefCell::new(Vec::new()),
+        }
+    }
+
+    fn toggle(&self) {
+        let open = !self.bar.is_search_mode();
+        self.bar.set_search_mode(open);
+        if open {
+            self.entry.grab_focus();
+        }
+    }
+
+    fn hit(&self, i: usize) -> Option<SearchHit> {
+        self.shown.borrow().get(i).cloned()
+    }
+
+    /// List what matches `text`, or the categories again when it is empty.
+    fn show(&self, text: &str, pages: &gtk::Stack) {
+        let query = text.trim().to_lowercase();
+        if query.is_empty() {
+            self.stack.set_visible_child_name("pages");
+            return;
+        }
+        if self.index.borrow().is_none() {
+            *self.index.borrow_mut() = Some(build_search_index(pages));
+        }
+        let words: Vec<&str> = query.split_whitespace().collect();
+        let index = self.index.borrow();
+        let mut found: Vec<(u8, usize, &SearchHit)> = index
+            .iter()
+            .flatten()
+            .enumerate()
+            .filter(|(_, h)| words.iter().all(|w| h.haystack.contains(w)))
+            .filter(|(_, h)| h.widget.upgrade().is_some_and(|w| shown_in_page(&w)))
+            .map(|(i, h)| {
+                let title = h.title.to_lowercase();
+                let rank = if title.contains(&query) {
+                    0
+                } else if words.iter().all(|w| title.contains(w)) {
+                    1
+                } else {
+                    2
+                };
+                (rank, i, h)
+            })
+            .collect();
+        found.sort_by_key(|(rank, i, _)| (*rank, *i));
+        found.truncate(SEARCH_LIMIT);
+
+        while let Some(row) = self.results.row_at_index(0) {
+            self.results.remove(&row);
+        }
+        let mut shown = self.shown.borrow_mut();
+        shown.clear();
+        for (_, _, hit) in &found {
+            let line = gtk::Box::new(gtk::Orientation::Vertical, 2);
+            line.set_margin_top(4);
+            line.set_margin_bottom(4);
+            let title = gtk::Label::new(Some(&hit.title));
+            title.set_xalign(0.0);
+            title.set_wrap(true);
+            let place = gtk::Label::new(Some(&hit.place));
+            place.set_xalign(0.0);
+            place.set_wrap(true);
+            place.add_css_class("caption");
+            place.add_css_class("dim-label");
+            line.append(&title);
+            line.append(&place);
+            let row = gtk::ListBoxRow::new();
+            row.set_child(Some(&line));
+            self.results.append(&row);
+            shown.push((*hit).clone());
+        }
+        self.stack.set_visible_child_name(if shown.is_empty() { "empty" } else { "results" });
+    }
+}
+
+/// Every titled group and row on the pages the window builds itself: the
+/// account pages are their own components, with lists of their own, and
+/// are found by their category's name.
+fn build_search_index(pages: &gtk::Stack) -> Vec<SearchHit> {
+    let mut out = Vec::new();
+    for page in SIDE_PAGES.iter().flat_map(|(_, pages)| pages.iter()) {
+        let page_title = i18n(page.title);
+        let child = if page.accounts { None } else { pages.child_by_name(page.id) };
+        // The category itself, for the account pages and anyone who types
+        // a page's name.
+        let target = child.clone().unwrap_or_else(|| pages.clone().upcast());
+        out.push(search_hit(page.id, &page_title, "", &i18n("Settings"), &target));
+        if let Some(child) = child {
+            index_widget(page.id, &child, &page_title, &mut out);
+        }
+    }
+    out
+}
+
+fn search_hit(page: &'static str, title: &str, subtitle: &str, place: &str, widget: &gtk::Widget) -> SearchHit {
+    let clean = |t: &str| t.replace("&amp;", "&").trim().to_string();
+    let (title, subtitle) = (clean(title), clean(subtitle));
+    SearchHit {
+        page,
+        haystack: format!("{title} {subtitle} {place}").to_lowercase(),
+        title,
+        place: place.to_string(),
+        widget: widget.downgrade(),
+    }
+}
+
+/// Walk a page for its groups and rows; `place` is where they sit so far.
+fn index_widget(page: &'static str, w: &gtk::Widget, place: &str, out: &mut Vec<SearchHit>) {
+    let mut place = place.to_string();
+    if let Some(group) = w.downcast_ref::<adw::PreferencesGroup>() {
+        let title = group.title();
+        if !title.is_empty() {
+            out.push(search_hit(page, &title, &group.description().unwrap_or_default(), &place, w));
+            // A page's first group is often named as the page is.
+            if !place.ends_with(title.as_str()) {
+                place = format!("{place} \u{203a} {title}");
+            }
+        }
+    } else if let Some(row) = w.downcast_ref::<adw::PreferencesRow>() {
+        let title = row.title();
+        let subtitle = w
+            .downcast_ref::<adw::ActionRow>()
+            .and_then(|r| r.subtitle())
+            .or_else(|| w.downcast_ref::<adw::ExpanderRow>().map(|r| r.subtitle()))
+            .unwrap_or_default();
+        if !title.is_empty() {
+            out.push(search_hit(page, &title, &subtitle, &place, w));
+            // An expander's own rows sit inside it.
+            if w.is::<adw::ExpanderRow>() {
+                place = format!("{place} \u{203a} {title}");
+            } else {
+                return;
+            }
+        }
+    }
+    let mut child = w.first_child();
+    while let Some(c) = child {
+        index_widget(page, &c, &place, out);
+        child = c.next_sibling();
+    }
+}
+
+/// Whether a found widget is showing on its page: it and everything up to
+/// the page are visible (a row hidden for a setup that does not need it is
+/// not offered).
+fn shown_in_page(w: &gtk::Widget) -> bool {
+    let mut cur = Some(w.clone());
+    while let Some(c) = cur {
+        if !c.is_visible() {
+            return false;
+        }
+        if c.is::<gtk::Stack>() {
+            return true;
+        }
+        cur = c.parent();
+    }
+    true
+}
+
+/// Scroll a found row or group into view and mark it for a moment.
+fn reveal(w: &gtk::Widget) {
+    if let Some(sw) = w.ancestor(gtk::ScrolledWindow::static_type()).and_downcast::<gtk::ScrolledWindow>() {
+        // Measured against what the viewport scrolls, not the viewport:
+        // the viewport's own coordinates are already scrolled.
+        let content = sw.child().map(|c| match c.downcast_ref::<gtk::Viewport>() {
+            Some(vp) => vp.child().unwrap_or(c.clone()),
+            None => c,
+        });
+        if let Some(content) = content {
+            if let Some(p) = w.compute_point(&content, &gtk::graphene::Point::new(0.0, 0.0)) {
+                let adj = sw.vadjustment();
+                let top = (f64::from(p.y()) - 24.0).clamp(adj.lower(), (adj.upper() - adj.page_size()).max(adj.lower()));
+                adj.set_value(top);
+            }
+        }
+    }
+    w.add_css_class("settings-search-hit");
+    let w = w.clone();
+    gtk::glib::timeout_add_local_once(std::time::Duration::from_millis(1600), move || {
+        w.remove_css_class("settings-search-hit");
+    });
 }
 
 impl Preferences {
@@ -1195,12 +1515,15 @@ impl Component for Preferences {
                     set_title: &i18n("Settings"),
 
                     #[wrap(Some)]
+                    #[name = "side_toolbar"]
                     set_child = &adw::ToolbarView {
+                        #[name = "side_header"]
                         add_top_bar = &adw::HeaderBar {
                             set_show_end_title_buttons: false,
                         },
 
                         #[wrap(Some)]
+                        #[name = "side_scroller"]
                         set_content = &gtk::ScrolledWindow {
                             set_hscrollbar_policy: gtk::PolicyType::Never,
 
@@ -1436,17 +1759,17 @@ impl Component for Preferences {
                                                the right group folds into a ⋯ menu when the reading \
                                                pane is narrow. Changes apply at once."),
                                     ),
-                                    #[wrap(Some)]
-                                    set_header_suffix = &gtk::Button {
-                                        set_label: &i18n("Restore Defaults"),
-                                        set_valign: gtk::Align::Center,
-                                        connect_clicked => PrefInput::ToolbarRestore,
-                                    },
-
                                     #[name = "toolbar_editor_box"]
                                     gtk::Box {
                                         set_orientation: gtk::Orientation::Vertical,
                                         set_spacing: 12,
+
+                                        gtk::Button {
+                                            set_label: &i18n("Restore Defaults"),
+                                            set_halign: gtk::Align::End,
+                                            set_valign: gtk::Align::Center,
+                                            connect_clicked => PrefInput::ToolbarRestore,
+                                        },
                                     },
                                 },
 
@@ -1597,6 +1920,15 @@ impl Component for Preferences {
                             add_named[Some("sidebar")] = &adw::PreferencesPage {
                                 add = &adw::PreferencesGroup {
                                     set_title: &i18n("Sidebar"),
+
+                                    #[name = "start_view_row"]
+                                    adw::ComboRow {
+                                        set_title: &i18n("Open at startup"),
+                                        set_subtitle: &i18n("What the window shows when Hylki starts."),
+                                        connect_selected_notify[sender] => move |row| {
+                                            sender.input(PrefInput::ChangeStartView(row.selected()));
+                                        },
+                                    },
 
                                     #[name = "show_accounts_row"]
                                     adw::SwitchRow {
@@ -1826,7 +2158,7 @@ impl Component for Preferences {
                                     adw::SwitchRow {
                                         set_title: &i18n("Unread dots instead of counts"),
                                         set_subtitle: &i18n("Mark folders and accounts that have unread mail with \
-                                                       a dot in the accent colour rather than the number \
+                                                       a dot in the accent color rather than the number \
                                                        of messages. The count stays in the tooltip."),
                                         connect_active_notify[sender] => move |row| {
                                             sender.input(PrefInput::ToggleRailDots(row.is_active()));
@@ -2202,11 +2534,11 @@ impl Component for Preferences {
 
                                     #[name = "override_colors_row"]
                                     adw::SwitchRow {
-                                        set_title: &i18n("Use my own colours"),
-                                        set_subtitle: &i18n("Ignore the text and background colours senders \
+                                        set_title: &i18n("Use my own colors"),
+                                        set_subtitle: &i18n("Ignore the text and background colors senders \
                                                        set, so every message reads in the same black or \
                                                        white on the reader's ground. Pictures are kept; \
-                                                       links take the accent colour."),
+                                                       links take the accent color."),
                                         connect_active_notify[sender] => move |row| {
                                             sender.input(PrefInput::ToggleOverrideColors(row.is_active()));
                                         },
@@ -2304,7 +2636,7 @@ impl Component for Preferences {
 
                                 add = &adw::PreferencesGroup {
                                     set_title: &i18n("Reader View"),
-                                    set_description: Some(&i18n("Reader View shows a message as its text alone, in one plain format, without the sender's layout, colours and fonts.")),
+                                    set_description: Some(&i18n("Reader View shows a message as its text alone, in one plain format, without the sender's layout, colors and fonts.")),
 
                                     #[name = "reader_switch_row"]
                                     adw::SwitchRow {
@@ -2576,8 +2908,8 @@ impl Component for Preferences {
                                     #[name = "tray_icon_row"]
                                     adw::ComboRow {
                                         set_title: &i18n("Tray icon"),
-                                        set_subtitle: &i18n("The Hylki icon, or a plain envelope in white or black \
-                                                       to match the panel."),
+                                        set_subtitle: &i18n("The app icon in full color, or its symbolic \
+                                                       outline, which the panel draws in its own color."),
                                         connect_selected_notify[sender] => move |row| {
                                             sender.input(PrefInput::ChangeTrayIcon(row.selected()));
                                         },
@@ -2621,7 +2953,7 @@ impl Component for Preferences {
                                         set_activatable: true,
                                         connect_activated => PrefInput::ExportLog,
                                         add_suffix = &gtk::Image {
-                                            set_icon_name: Some("co.hyprlab.Hylki-go-next-symbolic"),
+                                            set_icon_name: Some("go-next-symbolic"),
                                         },
                                     },
                                 },
@@ -2676,16 +3008,16 @@ impl Component for Preferences {
                                             && !model.nautilus.loaded
                                             && model.nautilus.loader != Some(true),
                                         add_suffix = &gtk::Button {
-                                            set_icon_name: "co.hyprlab.Hylki-edit-copy-symbolic",
+                                            set_icon_name: "edit-copy-symbolic",
                                             set_valign: gtk::Align::Center,
                                             set_tooltip_text: Some(i18n("Copy").as_str()),
                                             add_css_class: "flat",
                                             connect_clicked[cmd = model.nautilus_cmd.unwrap_or_default().to_string()] => move |b| {
                                                 b.clipboard().set_text(&cmd);
-                                                b.set_icon_name("co.hyprlab.Hylki-verified-checkmark-symbolic");
+                                                b.set_icon_name("verified-checkmark-symbolic");
                                                 let b = b.clone();
                                                 gtk::glib::timeout_add_local_once(std::time::Duration::from_millis(1200), move || {
-                                                    b.set_icon_name("co.hyprlab.Hylki-edit-copy-symbolic");
+                                                    b.set_icon_name("edit-copy-symbolic");
                                                 });
                                             },
                                         },
@@ -2770,7 +3102,7 @@ impl Component for Preferences {
                                         set_activatable: true,
                                         connect_activated => PrefInput::ExportSettings,
                                         add_suffix = &gtk::Image {
-                                            set_icon_name: Some("co.hyprlab.Hylki-go-next-symbolic"),
+                                            set_icon_name: Some("go-next-symbolic"),
                                         },
                                     },
 
@@ -2783,7 +3115,7 @@ impl Component for Preferences {
                                         set_activatable: true,
                                         connect_activated => PrefInput::ImportSettings,
                                         add_suffix = &gtk::Image {
-                                            set_icon_name: Some("co.hyprlab.Hylki-go-next-symbolic"),
+                                            set_icon_name: Some("go-next-symbolic"),
                                         },
                                     },
                                 },
@@ -2827,6 +3159,7 @@ impl Component for Preferences {
             accounts_slot: None,
             deferred_pages: std::cell::RefCell::new(Vec::new()),
             side_list: None,
+            search: None,
             content_page: None,
             split: None,
             accounts_sender: init.accounts_sender.clone(),
@@ -2879,6 +3212,7 @@ impl Component for Preferences {
             &widgets.clock_style_row,
             &widgets.language_row,
             &widgets.chevron_side_row,
+            &widgets.start_view_row,
         ] {
             no_truncate(row);
         }
@@ -2945,6 +3279,16 @@ impl Component for Preferences {
             ])));
             row.set_selected(placement_index(placement));
         }
+        widgets.start_view_row.set_model(Some(&gtk::StringList::new(&[
+            i18n("All Inboxes").as_str(),
+            i18n("The last account's inbox").as_str(),
+            i18n("The last folder").as_str(),
+        ])));
+        widgets.start_view_row.set_selected(match init.start_view {
+            crate::config::StartView::AllInboxes => 0,
+            crate::config::StartView::AccountInbox => 1,
+            crate::config::StartView::LastFolder => 2,
+        });
         widgets.chevron_side_row.set_model(Some(&gtk::StringList::new(&[i18n("Left").as_str(), i18n("Right").as_str()])));
         widgets.chevron_side_row.set_selected(if init.chevrons_left { 0 } else { 1 });
         widgets.sidebar_hover_expand_row.set_active(init.sidebar_hover_expand);
@@ -3198,7 +3542,7 @@ impl Component for Preferences {
                 .unwrap_or(0);
             widgets.default_from_row.set_selected(sel as u32);
             widgets.default_from_row.set_visible(model.identities.len() > 1);
-            widen_combo_value(&widgets.default_from_row, 50);
+            middle_ellipsize(&widgets.default_from_row);
         }
         widgets.paste_plain_row.set_active(init.paste_plain);
         widgets.compose_format_row.set_model(Some(&gtk::StringList::new(&[
@@ -3417,7 +3761,10 @@ impl Component for Preferences {
 
         widgets
             .settings_open_row
-            .set_model(Some(&gtk::StringList::new(&["Settings", "Accounts"])));
+            .set_model(Some(&gtk::StringList::new(&[
+                i18n("Settings").as_str(),
+                i18n("Accounts").as_str(),
+            ])));
         widgets
             .settings_open_row
             .set_selected(if init.settings_open_accounts { 1 } else { 0 });
@@ -3477,6 +3824,33 @@ impl Component for Preferences {
         model.rebuild_toolbar_chips();
         tracing::debug!("settings window: prefs tail E (sidebar rows built) at {:?}", t_init.elapsed());
         model.side_list = Some(widgets.side_list.clone());
+        model.search = Some(SettingsSearch::build(
+            &widgets.side_toolbar,
+            &widgets.side_header,
+            &widgets.side_scroller,
+            root.upcast_ref(),
+            &sender,
+        ));
+        // HYLKI_SHOWCASE_SETTINGS_SEARCH=<text>[:<n>] types <text> into the
+        // search 2 s after the window is built and, given <n>, picks the
+        // n-th result at 4 s (#260).
+        if let Ok(v) = std::env::var("HYLKI_SHOWCASE_SETTINGS_SEARCH") {
+            let (text, pick) = match v.rsplit_once(':') {
+                Some((t, n)) if n.parse::<usize>().is_ok() => (t.to_string(), n.parse::<usize>().ok()),
+                _ => (v.clone(), None),
+            };
+            let bar = model.search.as_ref().map(|s| (s.bar.clone(), s.entry.clone()));
+            if let Some((bar, entry)) = bar {
+                gtk::glib::timeout_add_seconds_local_once(2, move || {
+                    bar.set_search_mode(true);
+                    entry.set_text(&text);
+                });
+            }
+            if let Some(n) = pick {
+                let s = sender.clone();
+                gtk::glib::timeout_add_seconds_local_once(4, move || s.input(PrefInput::SearchPick(n)));
+            }
+        }
         model.content_page = Some(widgets.content_page.clone());
         model.split = Some(widgets.split.clone());
         let first = init
@@ -3807,6 +4181,32 @@ impl Component for Preferences {
                 let _ = sender.output(PrefOutput::SetUnifiedTags(on));
             }
             PrefInput::MountPages => self.mount_pages(),
+            PrefInput::Search(text) => {
+                // Every page has to be in the stack to be searched.
+                self.mount_pages();
+                if let (Some(search), Some(stack)) = (&self.search, &self.panels_stack) {
+                    search.show(&text, stack);
+                }
+            }
+            PrefInput::SearchPick(i) => {
+                let Some(hit) = self.search.as_ref().and_then(|s| s.hit(i)) else { return };
+                // The same way a click on the category goes, so an open
+                // editor still asks before it is left.
+                self.select_row(hit.page);
+                sender.input(PrefInput::SelectPage(hit.page.to_string()));
+                if let Some(widget) = hit.widget.upgrade() {
+                    // After the page has been laid out: until then the row
+                    // has no place to scroll to.
+                    gtk::glib::timeout_add_local_once(std::time::Duration::from_millis(80), move || {
+                        reveal(&widget);
+                    });
+                }
+            }
+            PrefInput::ToggleSearch => {
+                if let Some(search) = &self.search {
+                    search.toggle();
+                }
+            }
             PrefInput::SetAccountsPanel { panel, sender: accounts } => {
                 self.accounts_sender = accounts;
                 if let Some(slot) = &self.accounts_slot {
@@ -3836,6 +4236,15 @@ impl Component for Preferences {
             }
             PrefInput::ChangeTagsPlacement(idx) => {
                 let _ = sender.output(PrefOutput::SetTagsPlacement(placement_from_index(idx)));
+            }
+            PrefInput::ChangeStartView(idx) => {
+                use crate::config::StartView;
+                let view = match idx {
+                    1 => StartView::AccountInbox,
+                    2 => StartView::LastFolder,
+                    _ => StartView::AllInboxes,
+                };
+                let _ = sender.output(PrefOutput::SetStartView(view));
             }
             PrefInput::ChangeChevronSide(idx) => {
                 let _ = sender.output(PrefOutput::SetChevronsLeft(idx == 0));
@@ -4115,7 +4524,7 @@ fn rebuild_personal_words(exp: &adw::ExpanderRow) {
     for w in words {
         let row = adw::ActionRow::builder().title(&w).build();
         row.set_widget_name("vireo-spell-word");
-        let del = gtk::Button::from_icon_name("co.hyprlab.Hylki-user-trash-symbolic");
+        let del = gtk::Button::from_icon_name("user-trash-symbolic");
         del.add_css_class("flat");
         del.set_valign(gtk::Align::Center);
         del.set_tooltip_text(Some(i18n("Forget this word").as_str()));
@@ -4162,6 +4571,46 @@ fn placement_from_index(idx: u32) -> crate::config::SectionPlacement {
         2 => BelowAccounts,
         _ => AllInboxes,
     }
+}
+
+/// Addresses on one domain differ at the front and share the end, so the
+/// libadwaita default, which cuts the end off, left every choice reading
+/// "Jane Doe <jane.doe@exam…" (#261). The selected value shows the address
+/// alone, the part that tells the choices apart, and gives way in the
+/// middle; the popup list shows every choice whole.
+fn middle_ellipsize(row: &adw::ComboRow) {
+    fn factory(selected: bool) -> gtk::SignalListItemFactory {
+        let factory = gtk::SignalListItemFactory::new();
+        factory.connect_setup(move |_, item| {
+            if let Some(item) = item.downcast_ref::<gtk::ListItem>() {
+                let label = gtk::Label::new(None);
+                label.set_xalign(if selected { 1.0 } else { 0.0 });
+                if selected {
+                    label.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
+                    label.set_width_chars(24);
+                }
+                item.set_child(Some(&label));
+            }
+        });
+        factory.connect_bind(move |_, item| {
+            let Some(item) = item.downcast_ref::<gtk::ListItem>() else { return };
+            if let (Some(label), Some(s)) = (
+                item.child().and_downcast::<gtk::Label>(),
+                item.item().and_downcast::<gtk::StringObject>(),
+            ) {
+                let full = s.string();
+                let shown = match (selected, full.rfind('<')) {
+                    (true, Some(i)) if full.ends_with('>') => &full[i + 1..full.len() - 1],
+                    _ => full.as_str(),
+                };
+                label.set_label(shown);
+                label.set_tooltip_text(selected.then_some(full.as_str()));
+            }
+        });
+        factory
+    }
+    row.set_factory(Some(&factory(true)));
+    row.set_list_factory(Some(&factory(false)));
 }
 
 /// Give a combo row's selected-value label `extra` more pixels than the

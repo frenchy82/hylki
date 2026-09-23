@@ -51,46 +51,46 @@ impl MessageRow {
             let s = sender.clone();
             b.connect_clicked(move |_| s.input(MessageRowInput::Action(a)));
         };
-        let reply = button("co.hyprlab.Hylki-mail-reply-sender-symbolic", i18n("Reply"));
+        let reply = button("mail-reply-sender-symbolic", i18n("Reply"));
         action(&reply, RowAction::Reply);
-        let reply_all = button("co.hyprlab.Hylki-mail-reply-all-symbolic", i18n("Reply All"));
+        let reply_all = button("mail-reply-all-symbolic", i18n("Reply All"));
         action(&reply_all, RowAction::ReplyAll);
-        let forward = button("co.hyprlab.Hylki-mail-forward-symbolic", i18n("Forward"));
+        let forward = button("mail-forward-symbolic", i18n("Forward"));
         action(&forward, RowAction::Forward);
         // A draft is neither read nor unread, so it gets no toggle.
         let read = (!self.in_drafts).then(|| {
-            let b = button("co.hyprlab.Hylki-mail-read-symbolic", i18n("Mark as read"));
+            let b = button("hylki-mail-read-symbolic", i18n("Mark as read"));
             action(&b, RowAction::ToggleRead);
             b
         });
-        let star = button("co.hyprlab.Hylki-non-starred-symbolic", i18n("Star"));
+        let star = button("hylki-non-starred-symbolic", i18n("Star"));
         action(&star, RowAction::ToggleStar);
-        let tag = button("co.hyprlab.Hylki-tag-outline-symbolic", i18n("Tags"));
+        let tag = button("tag-outline-symbolic", i18n("Tags"));
         {
             let s = sender.clone();
             tag.connect_clicked(move |b| s.input(MessageRowInput::OpenTagMenu(b.clone())));
         }
-        let moveto = button("co.hyprlab.Hylki-folder-symbolic", i18n("Move to…"));
+        let moveto = button("folder-symbolic", i18n("Move to…"));
         {
             let s = sender.clone();
             moveto.connect_clicked(move |b| s.input(MessageRowInput::OpenMoveMenu(b.clone())));
         }
-        let archive = button("co.hyprlab.Hylki-mail-archive-symbolic", i18n("Archive"));
+        let archive = button("mail-archive-symbolic", i18n("Archive"));
         action(&archive, RowAction::Archive);
-        let delete = button("co.hyprlab.Hylki-user-trash-symbolic", i18n("Delete"));
+        let delete = button("user-trash-symbolic", i18n("Delete"));
         action(&delete, RowAction::Delete);
         let spam = if self.in_junk {
-            let b = button("co.hyprlab.Hylki-mail-mark-notjunk-symbolic", i18n("Not spam"));
+            let b = button("mail-mark-notjunk-symbolic", i18n("Not spam"));
             action(&b, RowAction::NotSpam);
             b
         } else {
-            let b = button("co.hyprlab.Hylki-mail-mark-junk-symbolic", i18n("Mark as spam"));
+            let b = button("mail-mark-junk-symbolic", i18n("Mark as spam"));
             action(&b, RowAction::Spam);
             b
         };
-        let contact = button("co.hyprlab.Hylki-contact-new-symbolic", i18n("Add sender to Contacts"));
+        let contact = button("contact-new-symbolic", i18n("Add sender to Contacts"));
         action(&contact, RowAction::AddContact);
-        let source = button("co.hyprlab.Hylki-code-symbolic", i18n("View Source"));
+        let source = button("code-symbolic", i18n("View Source"));
         action(&source, RowAction::ViewSource);
         for b in [Some(&reply), Some(&reply_all), Some(&forward), read.as_ref(), Some(&star), Some(&tag), Some(&moveto), Some(&archive), Some(&delete), Some(&spam), Some(&contact), Some(&source)].into_iter().flatten() {
             inner.append(b);
@@ -109,10 +109,10 @@ impl MessageRow {
         // menus and toolbar.
         if let Some(read) = &b.read {
             if self.msg.unread {
-                read.set_icon_name("co.hyprlab.Hylki-mail-read-symbolic");
+                read.set_icon_name("hylki-mail-read-symbolic");
                 read.set_tooltip_text(Some(i18n("Mark as read").as_str()));
             } else {
-                read.set_icon_name("co.hyprlab.Hylki-mail-unread-symbolic");
+                read.set_icon_name("mail-unread-symbolic");
                 read.set_tooltip_text(Some(i18n("Mark as unread").as_str()));
             }
         }
@@ -148,7 +148,7 @@ pub enum RowAction {
 }
 
 /// Init for a row: the message, Gravatar flag, and optional account-ring class
-/// (the account colour drawn as a ring around the avatar in the unified view).
+/// (the account color drawn as a ring around the avatar in the unified view).
 pub struct RowInit {
     pub msg: Message,
     pub gravatar: bool,
@@ -242,7 +242,7 @@ const SWIPE_MAX: f64 = 120.0;
 /// reply's rail stub reaches 2px the same way. The swipe surface's clip
 /// leaves this much room on the left, or both come out cut in half.
 const THREAD_NODE_REACH: f32 = 8.0;
-/// Distance past which the indicator reads as "armed" (full colour) — purely
+/// Distance past which the indicator reads as "armed" (full color) — purely
 /// a visual cue; `AdwSwipeTracker` makes the real commit decision on
 /// release, factoring in velocity too.
 const SWIPE_ARM: f64 = 72.0;
@@ -284,7 +284,7 @@ const THREAD_EXPANDED_EXTRA: i32 = 12;
 /// A background face lookup's answer, correlated by sender address (a recycled
 /// row compares before using it). The tiers are personal-first: the contact's
 /// own photo, their Gravatar, then the icon their domain publishes (#30), with
-/// the UI's coloured initials as the implicit last resort.
+/// the UI's colored initials as the implicit last resort.
 #[derive(Debug)]
 pub enum FaceCmd {
     /// The avatar tiers (contact photo, Gravatar) answered. `logo` carries the
@@ -435,7 +435,7 @@ pub struct MessageRow {
     /// animation lands — the `.swiping` class squares the pill off and
     /// drops its margins for that whole span, so the content and the strip
     /// under it read as one full-width surface rather than a rounded card
-    /// sliding over a coloured band.
+    /// sliding over a colored band.
     swipe_active: bool,
     /// The row's `AdwSwipeTracker`, built once against its `SwipeSurface` in
     /// post_view — also doubles as the wiring guard, since the tracker has
@@ -566,7 +566,7 @@ fn drag_selection(src: &gtk::DragSource, keys: &DragKeys) -> Vec<(u32, u32, u32,
 
 impl MessageRow {
     /// Rebuild the row's tag chips (#71): one pill per keyword that names a
-    /// tag, in tag order, wearing the tag's colour class.
+    /// tag, in tag order, wearing the tag's color class.
     fn render_tags(&self, tags_box: &gtk::Box) {
         while let Some(child) = tags_box.first_child() {
             tags_box.remove(&child);
@@ -1089,7 +1089,7 @@ impl FactoryComponent for MessageRow {
                     // does NOT select or open the message (it's a button, so the
                     // click is consumed before the row's selection gesture).
                     gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-view-more-horizontal-symbolic",
+                        set_icon_name: "view-more-horizontal-symbolic",
                         // Hidden until the row is hovered (or the palette is open);
                         // the .revealed class fades it in via a CSS transition.
                         #[watch]
@@ -1177,7 +1177,7 @@ impl FactoryComponent for MessageRow {
                     set_size: 38,
                     set_valign: gtk::Align::Center,
                     set_show_initials: true,
-                    // Account colour ring (unified view only).
+                    // Account color ring (unified view only).
                     set_css_classes: &self.ring_classes(),
                     #[watch]
                     set_text: Some(&self.face_name()),
@@ -1221,13 +1221,13 @@ impl FactoryComponent for MessageRow {
                         set_css_classes: &self.sender_classes(),
                     },
                     gtk::Image {
-                        set_icon_name: Some("co.hyprlab.Hylki-mail-attachment-symbolic"),
+                        set_icon_name: Some("mail-attachment-symbolic"),
                         #[watch]
                         set_visible: self.msg.has_attachment,
                         add_css_class: "dim-icon",
                     },
                     gtk::Image {
-                        set_icon_name: Some("co.hyprlab.Hylki-starred-symbolic"),
+                        set_icon_name: Some("starred-symbolic"),
                         #[watch]
                         set_visible: self.msg.starred || self.thread_starred,
                         add_css_class: "star-icon",
@@ -1269,7 +1269,7 @@ impl FactoryComponent for MessageRow {
                                 // No caret when expansion is off — the chip is
                                 // just a count then, not a toggle.
                                 set_visible: self.thread_expandable,
-                                set_icon_name: Some("co.hyprlab.Hylki-pan-end-symbolic"),
+                                set_icon_name: Some("pan-end-symbolic"),
                                 #[watch]
                                 set_css_classes: if self.thread_expanded {
                                     &["thread-toggle-icon", "open"]
@@ -1315,11 +1315,11 @@ impl FactoryComponent for MessageRow {
                     set_visible: self.preview_lines > 0,
 
                     // An encrypted message (#133) shows a lock where its text
-                    // would be, in the preview's own dimmed colour: a symbolic
+                    // would be, in the preview's own dimmed color: a symbolic
                     // icon takes the label's foreground, so it follows the
                     // light and dark themes with it.
                     gtk::Image {
-                        set_icon_name: Some("co.hyprlab.Hylki-channel-secure-symbolic"),
+                        set_icon_name: Some("channel-secure-symbolic"),
                         set_pixel_size: 12,
                         set_valign: gtk::Align::Center,
                         set_visible: crate::models::preview_is_encrypted(
@@ -1970,8 +1970,8 @@ impl MessageRow {
 
     fn swipe_icon(&self) -> &'static str {
         match self.swipe_action() {
-            RowAction::Delete => "co.hyprlab.Hylki-user-trash-symbolic",
-            _ => "co.hyprlab.Hylki-mail-archive-symbolic",
+            RowAction::Delete => "user-trash-symbolic",
+            _ => "mail-archive-symbolic",
         }
     }
 
@@ -1985,7 +1985,7 @@ impl MessageRow {
     /// A released swipe that cleared the commit distance (#swipe): the row
     /// flies out the side it was dragged to while its Revealer closes over
     /// the same 200ms, and the action fires as the two land. The strip stays
-    /// pinned at full commit for the whole exit, so the colour and icon it
+    /// pinned at full commit for the whole exit, so the color and icon it
     /// leaves under are the ones the release chose.
     fn commit_swipe(&mut self) {
         self.swipe_committing = true;
@@ -1995,9 +1995,9 @@ impl MessageRow {
         self.revealed = false;
     }
 
-    /// The indicator panel's classes: coloured for whichever action is
+    /// The indicator panel's classes: colored for whichever action is
     /// active, and "armed" once the drag has cleared the commit distance —
-    /// full colour says a release now fires it, matching Gmail's own cue.
+    /// full color says a release now fires it, matching Gmail's own cue.
     fn swipe_indicator_classes(&self) -> Vec<&'static str> {
         let mut v = vec!["swipe-indicator"];
         v.push(match self.swipe_action() {
@@ -2069,7 +2069,7 @@ impl MessageRow {
         }
         let mut slot = self.initials_image.borrow_mut();
         // A message from one of your own mailboxes wears that mailbox's emoji
-        // on its colour (#189), the same face the sidebar circle shows. It
+        // on its color (#189), the same face the sidebar circle shows. It
         // shares the slot with the initials, keyed by what it draws rather
         // than by a name, so either way the avatar is handed the same object
         // on every refresh.
@@ -2477,6 +2477,10 @@ pub struct MessageList {
     /// built ones); an idle callback builds them a chunk at a time.
     pending_rows: std::collections::VecDeque<RowInit>,
     fill_scheduled: bool,
+    /// The list had keyboard focus when a rebuild took its rows away, and
+    /// the selected row it belongs on is not built yet: `fill_rows` hands
+    /// focus to it when it is.
+    refocus_selected: bool,
     /// Row lists a folder switch left behind, torn down a chunk at a time
     /// at idle: destroying a page of rows costs about as much as building
     /// one, and it need not happen before the new page shows.
@@ -2521,7 +2525,7 @@ pub struct MessageList {
     preview_lines: u32,
     /// Whether rows draw their subject line (Focus Mode can take it away).
     show_subject: bool,
-    /// Whether the coloured avatars are drawn (#29).
+    /// Whether the colored avatars are drawn (#29).
     avatars: bool,
     /// The next rebuild draws the avatars folded away and slides them in
     /// (Focus Mode has just given them back).
@@ -2530,7 +2534,7 @@ pub struct MessageList {
     sender_logos: bool,
     /// Tint each row by its account (used in the unified inbox view).
     colorize: bool,
-    /// account_id → avatar colour, for tinting rows.
+    /// account_id → avatar color, for tinting rows.
     account_colors: std::collections::HashMap<u32, String>,
     /// Display-wide provider with each account's pale row-tint rule.
     color_provider: gtk::CssProvider,
@@ -2757,7 +2761,7 @@ pub enum MessageListInput {
     /// The open folder is (or stopped being) a Sent folder — rows name the
     /// recipient there instead of the sender (#27).
     SetShowRecipient(bool),
-    /// Show or hide the coloured avatars (#29).
+    /// Show or hide the colored avatars (#29).
     SetAvatars(bool),
     /// The avatars and preview lines together, as the settings and Focus
     /// Mode leave them. `animate` (a Focus Mode toggle) slides the avatars
@@ -3055,7 +3059,7 @@ impl SimpleComponent for MessageList {
                     // Drafts are neither read nor unread: both go when the
                     // list shows them.
                     gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-mail-read-symbolic",
+                        set_icon_name: "hylki-mail-read-symbolic",
                         set_tooltip_text: Some(i18n("Mark as Read").as_str()),
                         add_css_class: "flat",
                         #[watch]
@@ -3063,7 +3067,7 @@ impl SimpleComponent for MessageList {
                         connect_clicked => MessageListInput::Bulk(BulkAction::MarkRead),
                     },
                     gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-mail-unread-symbolic",
+                        set_icon_name: "mail-unread-symbolic",
                         set_tooltip_text: Some(i18n("Mark as Unread").as_str()),
                         add_css_class: "flat",
                         #[watch]
@@ -3071,13 +3075,13 @@ impl SimpleComponent for MessageList {
                         connect_clicked => MessageListInput::Bulk(BulkAction::MarkUnread),
                     },
                     gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-starred-symbolic",
+                        set_icon_name: "starred-symbolic",
                         set_tooltip_text: Some(i18n("Flag").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageListInput::Bulk(BulkAction::Flag),
                     },
                     gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-mail-archive-symbolic",
+                        set_icon_name: "mail-archive-symbolic",
                         set_tooltip_text: Some(i18n("Archive").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageListInput::Bulk(BulkAction::Archive),
@@ -3085,9 +3089,9 @@ impl SimpleComponent for MessageList {
                     gtk::Button {
                         #[watch]
                         set_icon_name: if model.in_junk {
-                            "co.hyprlab.Hylki-mail-mark-notjunk-symbolic"
+                            "mail-mark-notjunk-symbolic"
                         } else {
-                            "co.hyprlab.Hylki-mail-mark-junk-symbolic"
+                            "mail-mark-junk-symbolic"
                         },
                         #[watch]
                         set_tooltip_text: Some(if model.in_junk { i18n("Not Spam") } else { i18n("Mark as Spam") }.as_str()),
@@ -3096,7 +3100,7 @@ impl SimpleComponent for MessageList {
                         connect_clicked => MessageListInput::Bulk(BulkAction::Spam),
                     },
                     gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-user-trash-symbolic",
+                        set_icon_name: "user-trash-symbolic",
                         set_tooltip_text: Some(i18n("Delete").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageListInput::Bulk(BulkAction::Delete),
@@ -3105,7 +3109,7 @@ impl SimpleComponent for MessageList {
                         set_orientation: gtk::Orientation::Vertical,
                     },
                     gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-edit-clear-symbolic",
+                        set_icon_name: "edit-clear-symbolic",
                         set_tooltip_text: Some(i18n("Clear selection").as_str()),
                         add_css_class: "flat",
                         connect_clicked => MessageListInput::ClearSelection,
@@ -3176,7 +3180,7 @@ impl SimpleComponent for MessageList {
                     // Same full-size AdwStatusPage styling as the reader's
                     // "No message selected", so the two placeholders match.
                     adw::StatusPage {
-                        set_icon_name: Some("co.hyprlab.Hylki-mail-inbox-symbolic"),
+                        set_icon_name: Some("mail-inbox-symbolic"),
                         set_title: &i18n("No Messages"),
                         set_description: Some(i18n("There's nothing here right now.").as_str()),
                         set_vexpand: true,
@@ -3211,6 +3215,7 @@ impl SimpleComponent for MessageList {
             input: sender.input_sender().clone(),
             pending_rows: std::collections::VecDeque::new(),
             fill_scheduled: false,
+            refocus_selected: false,
             retired: Vec::new(),
             retire_scheduled: false,
             row_sigs: Vec::new(),
@@ -3404,10 +3409,19 @@ impl SimpleComponent for MessageList {
             }
             MessageListInput::RunQueuedRebuild => {
                 if let Some(preserve) = self.rebuild_queued.take() {
+                    // A rebuild destroys the focused row (or the whole list
+                    // box), and focus falls to the window, where Delete does
+                    // nothing: a background sync in the middle of deleting
+                    // mail one by one left the key dead until a row was
+                    // clicked (#255). Put focus back where it was.
+                    let had_focus = self.focus_in_list();
                     if preserve {
                         self.rebuild_preserving_scroll();
                     } else {
                         self.rebuild();
+                    }
+                    if had_focus {
+                        self.restore_list_focus();
                     }
                 }
                 // The rows exist now: run the selection that waited for them.
@@ -4421,14 +4435,14 @@ impl MessageList {
                 },
             )
             .icon(if any {
-                "co.hyprlab.Hylki-non-starred-symbolic"
+                "hylki-non-starred-symbolic"
             } else {
-                "co.hyprlab.Hylki-starred-symbolic"
+                "starred-symbolic"
             })
         } else if msg.starred {
-            item(RowAction::ToggleStar, &i18n("Remove Star"), "co.hyprlab.Hylki-non-starred-symbolic")
+            item(RowAction::ToggleStar, &i18n("Remove Star"), "hylki-non-starred-symbolic")
         } else {
-            item(RowAction::ToggleStar, &i18n("Star"), "co.hyprlab.Hylki-starred-symbolic")
+            item(RowAction::ToggleStar, &i18n("Star"), "starred-symbolic")
         }];
 
         // A conversation row acts on the whole thread: its read entry marks
@@ -4454,7 +4468,7 @@ impl MessageList {
                     y: wy,
                 });
             })
-            .icon("co.hyprlab.Hylki-folder-symbolic")
+            .icon("folder-symbolic")
         };
         if self.in_drafts {
             // A draft is neither read nor unread: no toggle to offer.
@@ -4476,19 +4490,19 @@ impl MessageList {
                     },
                 )
                 .icon(if any_unread {
-                    "co.hyprlab.Hylki-mail-read-symbolic"
+                    "hylki-mail-read-symbolic"
                 } else {
-                    "co.hyprlab.Hylki-mail-unread-symbolic"
+                    "mail-unread-symbolic"
                 }),
             );
         } else if msg.unread {
             flag_section
-                .push(item(RowAction::ToggleRead, &i18n("Mark as Read"), "co.hyprlab.Hylki-mail-read-symbolic"));
+                .push(item(RowAction::ToggleRead, &i18n("Mark as Read"), "hylki-mail-read-symbolic"));
         } else {
             flag_section.push(item(
                 RowAction::ToggleRead,
                 &i18n("Mark as Unread"),
-                "co.hyprlab.Hylki-mail-unread-symbolic",
+                "mail-unread-symbolic",
             ));
         }
 
@@ -4509,19 +4523,19 @@ impl MessageList {
             if entries.is_empty() {
                 Vec::new()
             } else {
-                vec![MenuEntry::submenu(i18n("Tags"), vec![entries]).icon("co.hyprlab.Hylki-tag-outline-symbolic")]
+                vec![MenuEntry::submenu(i18n("Tags"), vec![entries]).icon("tag-outline-symbolic")]
             }
         };
 
         let sections = vec![
             vec![
-                item(RowAction::Reply, &i18n("Reply"), "co.hyprlab.Hylki-mail-reply-sender-symbolic"),
-                item(RowAction::ReplyAll, &i18n("Reply All"), "co.hyprlab.Hylki-mail-reply-all-symbolic"),
-                item(RowAction::Forward, &i18n("Forward"), "co.hyprlab.Hylki-mail-forward-symbolic"),
+                item(RowAction::Reply, &i18n("Reply"), "mail-reply-sender-symbolic"),
+                item(RowAction::ReplyAll, &i18n("Reply All"), "mail-reply-all-symbolic"),
+                item(RowAction::Forward, &i18n("Forward"), "mail-forward-symbolic"),
                 item(
                     RowAction::EditAsNew,
                     &i18n("Edit as New Message"),
-                    "co.hyprlab.Hylki-document-edit-symbolic",
+                    "document-edit-symbolic",
                 ),
             ],
             flag_section,
@@ -4532,24 +4546,24 @@ impl MessageList {
                 // told, and the message returns to the Inbox. In Trash it
                 // is a plain move, with spam still on offer.
                 if self.in_junk {
-                    section.push(item(RowAction::NotSpam, &i18n("Not Spam"), "co.hyprlab.Hylki-mail-mark-notjunk-symbolic"));
+                    section.push(item(RowAction::NotSpam, &i18n("Not Spam"), "mail-mark-notjunk-symbolic"));
                 } else {
                     if self.restorable {
-                        section.push(item(RowAction::MoveToInbox, &i18n("Move to Inbox"), "co.hyprlab.Hylki-mail-inbox-symbolic"));
+                        section.push(item(RowAction::MoveToInbox, &i18n("Move to Inbox"), "mail-inbox-symbolic"));
                     }
-                    section.push(item(RowAction::Spam, &i18n("Mark as Spam"), "co.hyprlab.Hylki-mail-mark-junk-symbolic"));
+                    section.push(item(RowAction::Spam, &i18n("Mark as Spam"), "mail-mark-junk-symbolic"));
                 }
                 section.push(move_entry);
-                section.push(item(RowAction::Archive, &i18n("Archive"), "co.hyprlab.Hylki-mail-archive-symbolic"));
-                section.push(item(RowAction::Delete, &i18n("Delete"), "co.hyprlab.Hylki-user-trash-symbolic"));
+                section.push(item(RowAction::Archive, &i18n("Archive"), "mail-archive-symbolic"));
+                section.push(item(RowAction::Delete, &i18n("Delete"), "user-trash-symbolic"));
                 section
             },
             vec![item(
                 RowAction::AddContact,
                 &i18n("Add Sender to Contacts"),
-                "co.hyprlab.Hylki-contact-new-symbolic",
+                "contact-new-symbolic",
             )],
-            vec![item(RowAction::ViewSource, &i18n("View Source"), "co.hyprlab.Hylki-code-symbolic")],
+            vec![item(RowAction::ViewSource, &i18n("View Source"), "code-symbolic")],
         ];
 
         show_context_menu(self.rows.widget(), x, y, sections);
@@ -4567,21 +4581,21 @@ impl MessageList {
                 let mut section = Vec::new();
                 // Drafts are neither read nor unread.
                 if !self.in_drafts {
-                    section.push(item(BulkAction::MarkRead, &i18n("Mark as Read"), "co.hyprlab.Hylki-mail-read-symbolic"));
-                    section.push(item(BulkAction::MarkUnread, &i18n("Mark as Unread"), "co.hyprlab.Hylki-mail-unread-symbolic"));
+                    section.push(item(BulkAction::MarkRead, &i18n("Mark as Read"), "hylki-mail-read-symbolic"));
+                    section.push(item(BulkAction::MarkUnread, &i18n("Mark as Unread"), "mail-unread-symbolic"));
                 }
-                section.push(item(BulkAction::Flag, &i18n("Flag"), "co.hyprlab.Hylki-starred-symbolic"));
+                section.push(item(BulkAction::Flag, &i18n("Flag"), "starred-symbolic"));
                 section
             },
             {
                 let mut section = Vec::new();
                 if self.in_junk {
-                    section.push(item(BulkAction::NotSpam, &i18n("Not Spam"), "co.hyprlab.Hylki-mail-mark-notjunk-symbolic"));
+                    section.push(item(BulkAction::NotSpam, &i18n("Not Spam"), "mail-mark-notjunk-symbolic"));
                 } else {
                     if self.restorable {
-                        section.push(item(BulkAction::MoveToInbox, &i18n("Move to Inbox"), "co.hyprlab.Hylki-mail-inbox-symbolic"));
+                        section.push(item(BulkAction::MoveToInbox, &i18n("Move to Inbox"), "mail-inbox-symbolic"));
                     }
-                    section.push(item(BulkAction::Spam, &i18n("Mark as Spam"), "co.hyprlab.Hylki-mail-mark-junk-symbolic"));
+                    section.push(item(BulkAction::Spam, &i18n("Mark as Spam"), "mail-mark-junk-symbolic"));
                 }
                 {
                     // Move To… for the whole selection.
@@ -4603,11 +4617,11 @@ impl MessageList {
                                 y: wy,
                             });
                         })
-                        .icon("co.hyprlab.Hylki-folder-symbolic"),
+                        .icon("folder-symbolic"),
                     );
                 }
-                section.push(item(BulkAction::Archive, &i18n("Archive"), "co.hyprlab.Hylki-mail-archive-symbolic"));
-                section.push(item(BulkAction::Delete, &i18n("Delete"), "co.hyprlab.Hylki-user-trash-symbolic"));
+                section.push(item(BulkAction::Archive, &i18n("Archive"), "mail-archive-symbolic"));
+                section.push(item(BulkAction::Delete, &i18n("Delete"), "user-trash-symbolic"));
                 section
             },
         ];
@@ -5491,6 +5505,17 @@ impl MessageList {
             }
         }
         self.select_current();
+        // Only while focus is still on the list: anything focused since
+        // (the search box, the reader) keeps it.
+        if self.refocus_selected {
+            if !self.focus_in_list() {
+                self.refocus_selected = false;
+            } else {
+                let mut done = false;
+                self.preserving_scroll(|this| done = this.focus_selected_row());
+                self.refocus_selected = !done;
+            }
+        }
         if !self.pending_rows.is_empty() && !self.fill_scheduled {
             self.fill_scheduled = true;
             let input = self.input.clone();
@@ -5722,6 +5747,42 @@ impl MessageList {
         }
     }
 
+    /// Whether keyboard focus is on the list or one of its rows.
+    fn focus_in_list(&self) -> bool {
+        let list = self.rows.widget().upcast_ref::<gtk::Widget>();
+        list.root()
+            .and_then(|r| r.focus())
+            .is_some_and(|f| f == *list || f.is_ancestor(list))
+    }
+
+    /// Give focus back to the selected row after a rebuild, scroll kept and
+    /// no focus ring drawn. Until that row is built the list box holds
+    /// focus, so the list's keys work in between.
+    fn restore_list_focus(&mut self) {
+        self.preserving_scroll(|this| {
+            if this.focus_selected_row() {
+                this.refocus_selected = false;
+            } else {
+                this.rows.widget().grab_focus();
+                this.refocus_selected = !this.selected_ids.is_empty();
+            }
+        });
+        self.hide_focus_ring();
+    }
+
+    /// Focus the built row of the first selected message, if there is one.
+    fn focus_selected_row(&self) -> bool {
+        let list = self.rows.widget();
+        let Some(row) = list.selected_rows().into_iter().next() else {
+            return false;
+        };
+        let focused = row.grab_focus();
+        if focused {
+            self.hide_focus_ring();
+        }
+        focused
+    }
+
     /// Re-apply the whole selection (the viewed message plus any multi-selected
     /// rows) so it persists across rebuilds — background syncs included — until
     /// the user clicks away. Called after a rebuild, when rows are freshly built
@@ -5742,7 +5803,7 @@ impl MessageList {
     }
 
     /// Update the display-wide CSS that rings each account's avatar with its
-    /// colour (used in the unified "All Inboxes" view to identify the account).
+    /// color (used in the unified "All Inboxes" view to identify the account).
     fn refresh_tint_css(&self) {
         let mut css = String::new();
         for (id, color) in &self.account_colors {

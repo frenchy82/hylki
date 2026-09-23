@@ -107,6 +107,25 @@ level), so a "Notes" folder on any other server is left alone. The look is
 taken once per account; a folder brought back from the Hidden Folders list
 stays back.
 
+### Moving mail to another account
+
+**Move To** lists the folders of the account the mail is in first, then those
+of every other account that can take mail, each under its account's name.
+Dragging messages onto another account's folder in the sidebar does the same.
+
+The message is copied into the other account with its read and starred state.
+Only once that copy is stored is the original moved to its own account's
+Trash (or erased, where the account has no Trash), so a move that fails leaves
+the message where it was and says why.
+
+**Undo** (Ctrl+Z) takes the original back out of its account's Trash and puts
+the copy in the other account's Trash; Redo does the move again. A move from
+or to an account without a Trash folder cannot be undone.
+
+IMAP and JMAP accounts can receive mail this way. A Microsoft account and a
+POP3 account can be moved from but not into: Microsoft files a message added
+to a folder as a draft, and POP3 has only an inbox.
+
 ### OAuth (Google / Microsoft)
 
 **Microsoft** works out of the box: pick *Microsoft* in the account editor and

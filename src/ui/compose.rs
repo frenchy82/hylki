@@ -44,10 +44,10 @@ fn sig_source(kind: SourceKind, sig: &str) -> String {
 /// The icon a composing format carries, in the header and in its menu.
 fn format_icon(format: ComposeFormat) -> &'static str {
     match format {
-        ComposeFormat::Rich => "co.hyprlab.Hylki-format-text-rich-symbolic",
-        ComposeFormat::Markdown => "co.hyprlab.Hylki-markdown-symbolic",
-        ComposeFormat::Html => "co.hyprlab.Hylki-code-symbolic",
-        ComposeFormat::Plain => "co.hyprlab.Hylki-text-x-generic-symbolic",
+        ComposeFormat::Rich => "format-text-rich-symbolic",
+        ComposeFormat::Markdown => "markdown-symbolic",
+        ComposeFormat::Html => "code-symbolic",
+        ComposeFormat::Plain => "text-x-generic-symbolic",
     }
 }
 
@@ -130,10 +130,10 @@ fn size_for_host(
 /// Set the inline/window toggle button's icon + tooltip for the current host.
 fn set_toggle_icon(btn: &gtk::Button, windowed: bool) {
     if windowed {
-        btn.set_icon_name("co.hyprlab.Hylki-view-restore-symbolic");
+        btn.set_icon_name("view-restore-symbolic");
         btn.set_tooltip_text(Some(i18n("Collapse into reader").as_str()));
     } else {
-        btn.set_icon_name("co.hyprlab.Hylki-view-fullscreen-symbolic");
+        btn.set_icon_name("view-fullscreen-symbolic");
         btn.set_tooltip_text(Some(i18n("Open in window").as_str()));
     }
 }
@@ -409,8 +409,10 @@ pub enum ComposeInput {
     /// Whether the inline header should carry the window decorations: off
     /// while the pane sits beneath the reader, whose header stays (#212).
     SetDecorations(bool),
-    /// Re-grab keyboard focus into the editor (after a host move).
-    FocusEditor,
+    /// Put keyboard focus where writing starts, once the composer is on
+    /// screen (opened, or moved between inline and window): see
+    /// [`Compose::focus_initial`].
+    FocusInitial,
     /// A recipient/subject field changed — mark dirty.
     MarkFieldsDirty,
     /// Save to Drafts only if edited, then close (used when superseded / on nav).
@@ -533,7 +535,7 @@ impl Component for Compose {
                             set_orientation: gtk::Orientation::Vertical,
                         },
                         gtk::MenuButton {
-                            set_icon_name: "co.hyprlab.Hylki-pan-down-symbolic",
+                            set_icon_name: "pan-down-symbolic",
                             add_css_class: "suggested-action",
                             set_tooltip_text: Some(i18n("Send later").as_str()),
                             set_can_focus: false,
@@ -607,7 +609,7 @@ impl Component for Compose {
                     // not Cancel or Send lives in this menu.
                     #[name = "overflow_btn"]
                     pack_end = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-view-more-horizontal-symbolic",
+                        set_icon_name: "view-more-horizontal-symbolic",
                         set_tooltip_text: Some(i18n("Actions").as_str()),
                         #[watch]
                         set_visible: model.narrow,
@@ -616,7 +618,7 @@ impl Component for Compose {
                     // OpenPGP (#133): only offered where a gpg exists.
                     #[name = "encrypt_btn"]
                     pack_end = &gtk::ToggleButton {
-                        set_icon_name: "co.hyprlab.Hylki-channel-secure-symbolic",
+                        set_icon_name: "channel-secure-symbolic",
                         set_tooltip_text: Some(i18n("Encrypt with OpenPGP to every recipient's key").as_str()),
                         #[watch]
                         set_visible: crate::pgp::available() && !model.narrow,
@@ -626,7 +628,7 @@ impl Component for Compose {
                     },
                     #[name = "sign_btn"]
                     pack_end = &gtk::ToggleButton {
-                        set_icon_name: "co.hyprlab.Hylki-security-high-symbolic",
+                        set_icon_name: "security-high-symbolic",
                         set_tooltip_text: Some(i18n("Sign with your OpenPGP key").as_str()),
                         #[watch]
                         set_visible: crate::pgp::available() && !model.narrow,
@@ -635,7 +637,7 @@ impl Component for Compose {
                         },
                     },
                     pack_end = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-mail-attachment-symbolic",
+                        set_icon_name: "mail-attachment-symbolic",
                         set_tooltip_text: Some(i18n("Attach files").as_str()),
                         #[watch]
                         set_visible: !model.narrow,
@@ -643,7 +645,7 @@ impl Component for Compose {
                     },
                     // Cloud attachments (#144): only with an account set up.
                     pack_end = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-cloud-symbolic",
+                        set_icon_name: "cloud-symbolic",
                         set_tooltip_text: Some(i18n("Upload to cloud storage and share a link").as_str()),
                         #[watch]
                         set_visible: !model.cloud_accounts.is_empty() && !model.narrow,
@@ -652,7 +654,7 @@ impl Component for Compose {
                         connect_clicked => ComposeInput::CloudAttach,
                     },
                     pack_end = &gtk::Button {
-                        set_icon_name: "co.hyprlab.Hylki-x-office-address-book-symbolic",
+                        set_icon_name: "x-office-address-book-symbolic",
                         set_tooltip_text: Some(i18n("Open Contacts").as_str()),
                         #[watch]
                         set_visible: !model.narrow,
@@ -671,7 +673,7 @@ impl Component for Compose {
                     // away by default, one press brings them back.
                     #[name = "fields_btn"]
                     pack_end = &gtk::ToggleButton {
-                        set_icon_name: "co.hyprlab.Hylki-pan-down-symbolic",
+                        set_icon_name: "pan-down-symbolic",
                         add_css_class: "fields-chevron",
                         set_tooltip_text: Some(i18n("Show From, To and Subject").as_str()),
                         set_can_focus: false,
@@ -693,7 +695,7 @@ impl Component for Compose {
                     set_margin_bottom: 4,
                     #[watch]
                     set_visible: model.send_at.is_some(),
-                    gtk::Image { set_icon_name: Some("co.hyprlab.Hylki-alarm-symbolic") },
+                    gtk::Image { set_icon_name: Some("alarm-symbolic") },
                     gtk::Label {
                         set_hexpand: true,
                         set_halign: gtk::Align::Start,
@@ -717,7 +719,7 @@ impl Component for Compose {
                     set_margin_bottom: 4,
                     #[watch]
                     set_visible: !model.cloud_passwords.is_empty(),
-                    gtk::Image { set_icon_name: Some("co.hyprlab.Hylki-dialog-password-symbolic") },
+                    gtk::Image { set_icon_name: Some("dialog-password-symbolic") },
                     gtk::Label {
                         set_hexpand: true,
                         set_halign: gtk::Align::Start,
@@ -885,7 +887,7 @@ impl Component for Compose {
         // The preview keeps its word. It is a state rather than an action,
         // and an eye on its own leaves which state to guesswork.
         let preview_content = adw::ButtonContent::builder()
-            .icon_name("co.hyprlab.Hylki-eye-open-negative-filled-symbolic")
+            .icon_name("eye-open-negative-filled-symbolic")
             .label(i18n("Preview"))
             .build();
         let preview_btn = gtk::ToggleButton::builder().child(&preview_content).build();
@@ -1268,12 +1270,6 @@ impl Component for Compose {
         });
         root.add_controller(key);
 
-        if prefill.to.is_empty() {
-            widgets.to_row.grab_focus();
-        } else {
-            model.editor.grab_focus();
-        }
-
         ComponentParts { model, widgets }
     }
 
@@ -1313,7 +1309,7 @@ impl Component for Compose {
                 let entry = |label: String, icon: &str, msg: fn() -> ComposeInput| {
                     let s = sender.clone();
                     MenuEntry::new(&label, move || s.input(msg()))
-                        .icon(&format!("co.hyprlab.Hylki-{icon}-symbolic"))
+                        .icon(&format!("{icon}-symbolic"))
                 };
                 let mut drafts = vec![entry(i18n("Save Draft"), "document-save", || ComposeInput::SaveDraft)];
                 if self.draft_origin.is_some() {
@@ -1335,7 +1331,7 @@ impl Component for Compose {
                     let sign = widgets.sign_btn.clone();
                     pgp.push(
                         MenuEntry::new(&i18n("Sign with your OpenPGP key"), move || sign.set_active(!sign.is_active()))
-                            .icon(&format!("co.hyprlab.Hylki-{}-symbolic", check(self.sign, "security-high"))),
+                            .icon(&format!("{}-symbolic", check(self.sign, "security-high"))),
                     );
                     let encrypt = widgets.encrypt_btn.clone();
                     pgp.push(
@@ -1343,7 +1339,7 @@ impl Component for Compose {
                             &i18n("Encrypt with OpenPGP to every recipient's key"),
                             move || encrypt.set_active(!encrypt.is_active()),
                         )
-                        .icon(&format!("co.hyprlab.Hylki-{}-symbolic", check(self.encrypt, "channel-secure"))),
+                        .icon(&format!("{}-symbolic", check(self.encrypt, "channel-secure"))),
                     );
                 }
                 // The format chooser and the preview toggle are not here:
@@ -1569,7 +1565,7 @@ impl Component for Compose {
                 widgets.fields_list.set_visible(!(self.compact && !windowed) || self.fields_shown);
             }
 
-            ComposeInput::FocusEditor => self.editor.grab_focus(),
+            ComposeInput::FocusInitial => self.focus_initial(widgets),
 
             ComposeInput::MarkFieldsDirty => self.fields_dirty = true,
 
@@ -2024,6 +2020,23 @@ impl Component for Compose {
 }
 
 impl Compose {
+    /// Where the cursor starts: in To while the message is addressed to
+    /// nobody, in Subject once it is addressed but untitled, and in the body
+    /// when both are filled in, which is every reply. A new message used to
+    /// open in the body like a reply, where other mail clients start from
+    /// the recipients (#266). A compact reply with its field rows folded
+    /// away always starts in the body.
+    fn focus_initial(&self, widgets: &ComposeWidgets) {
+        let fields = widgets.fields_list.is_visible();
+        if fields && widgets.to_row.text().trim().is_empty() {
+            widgets.to_row.grab_focus();
+        } else if fields && widgets.subject_row.text().trim().is_empty() {
+            widgets.subject_row.grab_focus();
+        } else {
+            self.editor.grab_focus();
+        }
+    }
+
     /// The format chooser's icon and tooltip for the format it is currently
     /// set to, and whether the preview toggle can afford its label.
     fn dress_format_buttons(&self) {
@@ -2199,9 +2212,9 @@ impl Compose {
             item.set_margin_bottom(3);
             // Mark where the suggestion came from: address book vs. mail history.
             let icon = gtk::Image::from_icon_name(if sug.from_contacts {
-                "co.hyprlab.Hylki-avatar-default-symbolic"
+                "avatar-default-symbolic"
             } else {
-                "co.hyprlab.Hylki-document-open-recent-symbolic"
+                "document-open-recent-symbolic"
             });
             icon.set_valign(gtk::Align::Center);
             icon.add_css_class("dim-label");
@@ -2505,12 +2518,12 @@ impl Compose {
             // stretch this box the full width of its cell — leaving the pill's
             // background trailing well past the remove button. Hug the content.
             chip.set_halign(gtk::Align::Start);
-            chip.append(&gtk::Image::from_icon_name("co.hyprlab.Hylki-mail-attachment-symbolic"));
+            chip.append(&gtk::Image::from_icon_name("mail-attachment-symbolic"));
             let lbl = gtk::Label::new(Some(&name));
             lbl.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
             lbl.set_max_width_chars(22);
             chip.append(&lbl);
-            let rm = gtk::Button::from_icon_name("co.hyprlab.Hylki-window-close-symbolic");
+            let rm = gtk::Button::from_icon_name("window-close-symbolic");
             rm.add_css_class("flat");
             rm.set_valign(gtk::Align::Center);
             let s = sender.input_sender().clone();
@@ -2540,12 +2553,12 @@ impl Compose {
             chip.add_css_class("cloud-chip");
             chip.set_halign(gtk::Align::Start);
             chip.set_tooltip_text(Some(&link.url));
-            chip.append(&gtk::Image::from_icon_name("co.hyprlab.Hylki-cloud-symbolic"));
+            chip.append(&gtk::Image::from_icon_name("cloud-symbolic"));
             let lbl = gtk::Label::new(Some(&i18n_f("{name} (link)", &[("name", &link.name)])));
             lbl.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
             lbl.set_max_width_chars(26);
             chip.append(&lbl);
-            let rm = gtk::Button::from_icon_name("co.hyprlab.Hylki-window-close-symbolic");
+            let rm = gtk::Button::from_icon_name("window-close-symbolic");
             rm.add_css_class("flat");
             rm.set_valign(gtk::Align::Center);
             let s = sender.input_sender().clone();

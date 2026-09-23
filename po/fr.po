@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: hylki\n"
 "Report-Msgid-Bugs-To: https://github.com/hyprlab/hylki/issues\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2026-09-22 17:58+0200\n"
+"PO-Revision-Date: 2026-09-23 17:46+0200\n"
 "Last-Translator: cartes <cartes341@free.fr>\n"
 "Language-Team: French\n"
 "Language: fr\n"
@@ -321,7 +321,7 @@ msgid "Restart Now"
 msgstr "Redémarrer maintenant"
 
 msgid "{name} · {current} of {total}"
-msgstr ""
+msgstr "{name} · {current} sur {total}"
 
 msgid "View Source"
 msgstr "Afficher le code source"
@@ -473,15 +473,22 @@ msgstr ""
 msgid "No {v1} folder available"
 msgstr "Aucun dossier {v1} disponible"
 
-msgid "One message stayed put — mail can't be moved between accounts"
-msgstr ""
-"Un message n'a pas été déplacé — les e-mails ne peuvent pas être déplacés "
-"entre différents comptes"
+msgid "One message could not be moved to {account}: {error}"
+msgid_plural "{n} messages could not be moved to {account}: {error}"
+msgstr[0] ""
+msgstr[1] ""
 
-msgid "{foreign} messages stayed put — mail can't be moved between accounts"
+msgid "Moving one message to {account}…"
+msgid_plural "Moving {n} messages to {account}…"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "One message stayed put: this account can't take mail from another"
 msgstr ""
-"{foreign} messages n'ont pas été déplacés — les e-mails ne peuvent pas être "
-"déplacés entre différents comptes"
+
+msgid ""
+"{foreign} messages stayed put: this account can't take mail from another"
+msgstr ""
 
 msgid "Move Folder"
 msgstr "Déplacer le dossier"
@@ -933,6 +940,10 @@ msgstr "Sur cet ordinateur"
 msgid "CardDAV Address Book"
 msgstr "Carnet d'adresses CardDAV"
 
+#, fuzzy
+msgid "{date} at {time}"
+msgstr "Aujourd'hui, {time}"
+
 msgid "Encrypted message"
 msgstr "Message chiffré"
 
@@ -1003,7 +1014,7 @@ msgid "Scheduled for {when}"
 msgstr "Programmé pour {when}"
 
 msgid "Today, {time}"
-msgstr ""
+msgstr "Aujourd'hui, {time}"
 
 msgid "New message"
 msgstr "Nouveau message"
@@ -1153,7 +1164,7 @@ msgstr ""
 "dans Hylki."
 
 msgid ""
-"Label messages with one or more coloured tags. Tags are stored on the mail "
+"Label messages with one or more colored tags. Tags are stored on the mail "
 "server as IMAP keywords, so Thunderbird and other clients show the same "
 "tags.\n"
 "\n"
@@ -1672,6 +1683,16 @@ msgstr "Mot de passe SMTP"
 msgid "Test SMTP"
 msgstr "Tester le SMTP"
 
+msgid "Automatic"
+msgstr "Automatique"
+
+#. "Disabled", not "Automatic": the rows around it auto-detect a folder
+#. from the server's markings, and this one detects nothing. It is an
+#. override that is either set or not, and unset means the Sent folder
+#. above keeps taking the copies as it always has.
+msgid "Disabled"
+msgstr ""
+
 msgid "Microsoft 365 files its own copy in Sent Items; this cannot be changed."
 msgstr ""
 "Microsoft 365 classe sa propre copie dans Éléments envoyés ; cela ne peut "
@@ -1698,9 +1719,6 @@ msgstr "Activer ce compte"
 
 msgid "Use this account in Hylki"
 msgstr "Utiliser ce compte dans Hylki"
-
-msgid "Automatic"
-msgstr "Automatique"
 
 msgid "Never"
 msgstr "Jamais"
@@ -1772,7 +1790,7 @@ msgstr "Tags trouvés"
 
 msgid ""
 "{n} tags are in use in your mailboxes but not set up here. Import them all, "
-"or choose which to add. Names and colours can be changed afterwards."
+"or choose which to add. Names and colors can be changed afterwards."
 msgstr ""
 "{n} tags sont utilisés dans vos boîtes aux lettres mais ne sont pas "
 "configurés ici. Importez-les tous, ou choisissez lesquels ajouter. Les noms "
@@ -1814,13 +1832,13 @@ msgstr ""
 "plupart des signes de ponctuation, sans espaces. Les tags intégrés à "
 "Thunderbird sont $label1 à $label5."
 
-msgid "Colour"
+msgid "Color"
 msgstr "Couleur"
 
-msgid "Custom colour…"
+msgid "Custom color…"
 msgstr "Couleur personnalisée…"
 
-msgid "Tag Colour"
+msgid "Tag Color"
 msgstr "Couleur de l'étiquette"
 
 msgid "Edit Filter"
@@ -1908,6 +1926,11 @@ msgstr "Afficher les pièces jointes"
 
 msgid "Hide the attachments"
 msgstr "Masquer les pièces jointes"
+
+msgid "{n} attachment"
+msgid_plural "{n} attachments"
+msgstr[0] "{n} pièce jointe"
+msgstr[1] "{n} pièces jointes"
 
 msgid "Thumbnail size"
 msgstr "Taille des vignettes"
@@ -2067,13 +2090,8 @@ msgstr "Indexation de {n} messages…"
 msgid "Loading more…"
 msgstr "Chargement en cours…"
 
-msgid "{n} attachment"
-msgid_plural "{n} attachments"
-msgstr[0] "{n} pièce jointe"
-msgstr[1] "{n} pièces jointes"
-
 msgid "{shown} of {total}"
-msgstr ""
+msgstr "{shown} sur {total}"
 
 msgid "The file could not be opened"
 msgstr "Le fichier n'a pas pu être ouvert"
@@ -2973,7 +2991,7 @@ msgstr ""
 
 msgid ""
 "Reader View shows a message as its text alone, in one plain format, without "
-"the sender's layout, colours and fonts."
+"the sender's layout, colors and fonts."
 msgstr ""
 "Le mode Lecture affiche un message sous forme de texte seul, dans une mise "
 "en forme unique et sobre, sans la mise en page, les couleurs ni les polices "
@@ -3052,10 +3070,10 @@ msgstr "Supprimer ce message"
 msgid "View source"
 msgstr "Afficher le code source"
 
-msgid "Back to my fonts and colours"
+msgid "Back to my fonts and colors"
 msgstr "Retour à mes polices et couleurs"
 
-msgid "Show the sender's fonts and colours"
+msgid "Show the sender's fonts and colors"
 msgstr "Afficher les polices et les couleurs de l'expéditeur"
 
 msgid "Show remote content"
@@ -3324,14 +3342,11 @@ msgstr[1] "{n} Clés importées."
 msgid "That key was already in your keyring."
 msgstr "Cette clé se trouvait déjà sur votre trousseau."
 
-msgid "Hylki icon"
-msgstr "Icône Hylki"
+msgid "App icon"
+msgstr "Icône de l'application"
 
-msgid "Envelope, white"
-msgstr "Enveloppe, blanche"
-
-msgid "Envelope, black"
-msgstr "Enveloppe, noire"
+msgid "Symbolic"
+msgstr ""
 
 msgid "Follow system"
 msgstr "Suivre le système"
@@ -3469,6 +3484,15 @@ msgstr ""
 msgid "Installed, but not this version's copy"
 msgstr "Installée, mais pas la copie de cette version"
 
+msgid "Search Settings"
+msgstr ""
+
+msgid "Search settings"
+msgstr ""
+
+msgid "No Results"
+msgstr ""
+
 msgid "Save the filter?"
 msgstr "Enregistrer le filtre ?"
 
@@ -3552,9 +3576,6 @@ msgstr ""
 
 msgid "Theme"
 msgstr "Thème"
-
-msgid "App icon"
-msgstr "Icône de l'application"
 
 msgid "This window opens to"
 msgstr "Ouverture de la fenêtre sur"
@@ -3687,6 +3708,12 @@ msgid ""
 msgstr ""
 "Chaque message s'ouvre en mode Lecture. Le commutateur de l'en-tête permet "
 "toujours de changer celui affiché à l'écran."
+
+msgid "Open at startup"
+msgstr ""
+
+msgid "What the window shows when Hylki starts."
+msgstr ""
 
 msgid "Accounts in the sidebar"
 msgstr "Comptes dans la barre latérale"
@@ -3853,7 +3880,7 @@ msgstr "Puces de non-lus au lieu des nombres"
 
 msgid ""
 "Mark folders and accounts that have unread mail with a dot in the accent "
-"colour rather than the number of messages. The count stays in the tooltip."
+"color rather than the number of messages. The count stays in the tooltip."
 msgstr ""
 "Marquer les dossiers et comptes ayant du courrier non lu par un point dans "
 "la couleur d'accentuation plutôt que par le nombre de messages. Le compteur "
@@ -4124,13 +4151,13 @@ msgid "The interface font unless another is chosen."
 msgstr ""
 "La police par défaut de l'interface, sauf si une autre est sélectionnée."
 
-msgid "Use my own colours"
+msgid "Use my own colors"
 msgstr "Utiliser mes propres couleurs"
 
 msgid ""
-"Ignore the text and background colours senders set, so every message reads "
-"in the same black or white on the reader's ground. Pictures are kept; links "
-"take the accent colour."
+"Ignore the text and background colors senders set, so every message reads in "
+"the same black or white on the reader's ground. Pictures are kept; links "
+"take the accent color."
 msgstr ""
 "Les couleurs du texte et de l'arrière-plan définies par les expéditeurs sont "
 "ignorées, de sorte que tous les messages s'affichent en noir ou en blanc sur "
@@ -4433,10 +4460,9 @@ msgid "Tray icon"
 msgstr "Icône de notification"
 
 msgid ""
-"The Hylki icon, or a plain envelope in white or black to match the panel."
+"The app icon in full color, or its symbolic outline, which the panel draws "
+"in its own color."
 msgstr ""
-"L'icône de Hylki, ou une simple enveloppe blanche ou noire pour s'adapter au "
-"panneau."
 
 msgid "Unread mail in the tray menu"
 msgstr "Courrier non lu dans le menu de notification"
@@ -4583,6 +4609,15 @@ msgstr "Au-dessus des comptes"
 msgid "Below the accounts"
 msgstr "Sous les comptes"
 
+msgid "All Inboxes"
+msgstr "Toutes les boîtes"
+
+msgid "The last account's inbox"
+msgstr ""
+
+msgid "The last folder"
+msgstr ""
+
 msgid "Left"
 msgstr "Gauche"
 
@@ -4601,6 +4636,8 @@ msgstr "3 lignes"
 msgid ""
 "The launcher shows an icon set outside Hylki. Picking one here replaces it."
 msgstr ""
+"Le lanceur affiche une icône définie en dehors de Hylki. En choisir une ici "
+"la remplace."
 
 msgid "When displayed"
 msgstr "Lors de l'affichage"
@@ -4893,6 +4930,9 @@ msgid ""
 "Accounts added in GNOME Settings → Online Accounts appear above, IMAP and "
 "SMTP ones included. Google and Microsoft sign in only that way."
 msgstr ""
+"Les comptes ajoutés dans Paramètres GNOME → Comptes en ligne apparaissent ci-"
+"dessus, IMAP et SMTP compris. Google et Microsoft ne peuvent se connecter "
+"que de cette façon."
 
 msgid "Scan Again"
 msgstr "Analyser à nouveau"
@@ -4944,7 +4984,7 @@ msgstr ""
 msgid "Message text shown under each subject"
 msgstr "Texte du message affiché sous chaque objet"
 
-msgid "Colourful initials beside each message"
+msgid "Colorful initials beside each message"
 msgstr "Initiales colorées à côté de chaque message"
 
 msgid "Conversation view"
@@ -5148,6 +5188,12 @@ msgstr ""
 msgid "Send failed: {e}"
 msgstr "Échec de l'envoi : {e}"
 
+msgid "Could not reach the server"
+msgstr ""
+
+msgid "That folder is not on the server"
+msgstr ""
+
 msgid "the server's reply could not be read (it began: {reply})"
 msgstr ""
 "la réponse du serveur n'a pas pu être lue (elle commençait par : {reply})"
@@ -5225,8 +5271,14 @@ msgstr "Impossible de supprimer le message : {e}"
 msgid "POP3 accounts don't support folders"
 msgstr "Les comptes POP3 ne prennent pas en charge les dossiers"
 
+msgid "A POP3 account can't receive mail from another account"
+msgstr ""
+
 msgid "Inbox"
 msgstr "Boîte de réception"
+
+msgid "A Microsoft account can't receive mail from another account"
+msgstr ""
 
 msgid "Email Client"
 msgstr "Client e-mail"
@@ -5315,7 +5367,7 @@ msgid "Reading:"
 msgstr "Lecture :"
 
 msgid ""
-"Reader View, your own font and colours, and per-message light or dark "
+"Reader View, your own font and colors, and per-message light or dark "
 "rendering"
 msgstr ""
 "Vue Lecteur, votre propre police et vos couleurs, et un rendu clair ou "
@@ -5364,6 +5416,31 @@ msgstr "La boîte de réception unifiée en mode clair"
 
 msgid "Hyprlab"
 msgstr "Hyprlab"
+
+#~ msgid "One message stayed put — mail can't be moved between accounts"
+#~ msgstr ""
+#~ "Un message n'a pas été déplacé — les e-mails ne peuvent pas être déplacés "
+#~ "entre différents comptes"
+
+#~ msgid "{foreign} messages stayed put — mail can't be moved between accounts"
+#~ msgstr ""
+#~ "{foreign} messages n'ont pas été déplacés — les e-mails ne peuvent pas "
+#~ "être déplacés entre différents comptes"
+
+#~ msgid "Hylki icon"
+#~ msgstr "Icône Hylki"
+
+#~ msgid "Envelope, white"
+#~ msgstr "Enveloppe, blanche"
+
+#~ msgid "Envelope, black"
+#~ msgstr "Enveloppe, noire"
+
+#~ msgid ""
+#~ "The Hylki icon, or a plain envelope in white or black to match the panel."
+#~ msgstr ""
+#~ "L'icône de Hylki, ou une simple enveloppe blanche ou noire pour s'adapter "
+#~ "au panneau."
 
 #~ msgid ""
 #~ "Google and Microsoft accounts sign in through GNOME Settings → Online "
@@ -5414,18 +5491,6 @@ msgstr "Hyprlab"
 #~ msgstr ""
 #~ "Mots de passe et jetons OAuth conservés en sécurité dans le trousseau de "
 #~ "clés système"
-
-#, fuzzy
-#~ msgid "Mark as Read button"
-#~ msgstr "Marquer comme lu"
-
-#, fuzzy
-#~ msgid "Archive button"
-#~ msgstr "Archiver"
-
-#, fuzzy
-#~ msgid "Delete button"
-#~ msgstr "Supprimer le contact ?"
 
 #~ msgid "Label (defaults to email address)"
 #~ msgstr "Étiquette (adresse e-mail par défaut)"
@@ -5603,9 +5668,6 @@ msgstr "Hyprlab"
 
 #~ msgid "Show under All Inboxes"
 #~ msgstr "Afficher sous Toutes les boîtes"
-
-#~ msgid "All Inboxes"
-#~ msgstr "Toutes les boîtes"
 
 #~ msgid "All Inboxes unread count"
 #~ msgstr "Nombre de non lus dans Toutes les boîtes"

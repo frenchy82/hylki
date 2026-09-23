@@ -1,5 +1,5 @@
 //! Left pane: an optional "All Inboxes" (unified) row, then one section per
-//! account. Each account has a coloured avatar circle + header button (chevron
+//! account. Each account has a colored avatar circle + header button (chevron
 //! on the right) and an animated `gtk::Revealer` holding its folder list, so
 //! expanding/collapsing slides smoothly. Exactly one thing is selected across
 //! the unified row and all account folder lists.
@@ -100,8 +100,8 @@ fn row_title(row: UnifiedRow) -> String {
 fn row_icon(row: UnifiedRow) -> &'static str {
     match row {
         UnifiedRow::Kind(kind) => kind.icon(),
-        UnifiedRow::Filtered => "co.hyprlab.Hylki-filter-folder-symbolic",
-        UnifiedRow::Tags => "co.hyprlab.Hylki-tag-outline-symbolic",
+        UnifiedRow::Filtered => "filter-folder-symbolic",
+        UnifiedRow::Tags => "tag-outline-symbolic",
     }
 }
 
@@ -127,7 +127,7 @@ fn toggle_msg(row: UnifiedRow) -> SidebarInput {
 
 /// The chevron glyph for a section that is open or folded.
 fn chevron_icon(open: bool) -> &'static str {
-    if open { "co.hyprlab.Hylki-pan-down-symbolic" } else { "co.hyprlab.Hylki-pan-end-symbolic" }
+    if open { "pan-down-symbolic" } else { "pan-end-symbolic" }
 }
 
 /// What a unified row is called.
@@ -150,7 +150,7 @@ pub struct SectionData {
     pub collapsed: bool,
     /// Whether this account's custom-folders section is expanded (default hidden).
     pub custom_expanded: bool,
-    /// Resolved avatar background colour ("#rrggbb").
+    /// Resolved avatar background color ("#rrggbb").
     pub color: String,
     /// Avatar emoji; when absent, account-name initials are shown.
     pub emoji: Option<String>,
@@ -191,6 +191,16 @@ pub struct SidebarInit {
     pub show_attachments: bool,
     /// Whether the "Contacts" row is shown.
     pub show_contacts: bool,
+    /// Where the first pick lands instead of All Inboxes (#256).
+    pub start: Option<StartTarget>,
+}
+
+/// A view to open at launch (#256), by account address: an account's
+/// inbox, or one of its folders by path.
+#[derive(Clone, Debug)]
+pub enum StartTarget {
+    Inbox(String),
+    Folder(String, String),
 }
 
 /// What is currently selected in the sidebar.
@@ -285,7 +295,7 @@ pub struct Sidebar {
     busy: bool,
     /// The "Outbox" row list box (one row), while anything is queued.
     outbox_list: Option<gtk::ListBox>,
-    /// Display-wide provider holding each account's avatar colour rules.
+    /// Display-wide provider holding each account's avatar color rules.
     color_provider: gtk::CssProvider,
     selected: Sel,
     /// Icon-only mode: hide all text, show just icons and account pills.
@@ -299,6 +309,9 @@ pub struct Sidebar {
     quiet: std::rc::Rc<std::cell::Cell<bool>>,
     /// See `SidebarInit::mirror`.
     mirror: bool,
+    /// The launch view still to be picked (#256): kept until the account
+    /// it names has its folders listed, then taken by the first pick.
+    start: Option<StartTarget>,
     /// Whether the "Attachments" row is shown (in the pinned footer).
     show_attachments: bool,
     /// Whether the "Contacts" row is shown (in the pinned footer).
@@ -453,6 +466,9 @@ pub enum SidebarInput {
     /// back (the docked rail and the floating peek panel are two instances
     /// of this component; the app pushes every navigation to both).
     MirrorSelection(Sel),
+    /// Stop waiting for the launch view's account (#256): its folders did
+    /// not arrive in time, so the usual first view is picked instead.
+    DropStart,
     /// Toggle the collapsible "Folders" (custom folders) section for an account.
     ToggleCustomFoldersLocal(u32),
     /// Collapse/expand one folder-tree node (a parent folder's chevron, #51).
@@ -699,6 +715,7 @@ impl Component for Sidebar {
             collapsed: init.collapsed,
             quiet: std::rc::Rc::new(std::cell::Cell::new(false)),
             mirror: init.mirror,
+            start: if init.mirror { None } else { init.start },
             show_attachments: init.show_attachments,
             show_contacts: init.show_contacts,
             outbox_count: 0,
@@ -777,6 +794,12 @@ impl Sidebar {
         _root: &<Self as Component>::Root,
     ) {
         match msg {
+            SidebarInput::DropStart => {
+                if self.start.take().is_some() && self.selected == Sel::None {
+                    self.restore_selection();
+                }
+            }
+
             SidebarInput::MirrorSelection(sel) => {
                 if self.selected != sel {
                     self.selected = sel.clone();
@@ -1447,7 +1470,7 @@ impl Sidebar {
                     let expanded = !rev.reveals_child();
                     rev.set_reveal_child(expanded);
                     if let Some(ch) = self.chevrons.get(&id) {
-                        ch.set_icon_name(Some(if expanded { "co.hyprlab.Hylki-pan-down-symbolic" } else { "co.hyprlab.Hylki-pan-end-symbolic" }));
+                        ch.set_icon_name(Some(if expanded { "pan-down-symbolic" } else { "pan-end-symbolic" }));
                     }
                     if rail_only {
                         self.rail_open_accounts.insert(id, expanded);
@@ -1478,7 +1501,7 @@ impl Sidebar {
                     let expanded = !rev.reveals_child();
                     rev.set_reveal_child(expanded);
                     if let Some(ch) = self.custom_chevrons.get(&id) {
-                        ch.set_icon_name(Some(if expanded { "co.hyprlab.Hylki-pan-down-symbolic" } else { "co.hyprlab.Hylki-pan-end-symbolic" }));
+                        ch.set_icon_name(Some(if expanded { "pan-down-symbolic" } else { "pan-end-symbolic" }));
                     }
                     if let Some(s) = self.sections.iter_mut().find(|s| s.account.id == id) {
                         s.custom_expanded = expanded;
@@ -1543,7 +1566,7 @@ impl Sidebar {
 
 impl Sidebar {
     /// Rebuild the list: optional unified row, then per-account headers with
-    /// animated folder revealers, and refresh the per-account colour rules.
+    /// animated folder revealers, and refresh the per-account color rules.
     /// Flip one tree node, restyle its caret, and re-apply visibility across
     /// the account's tree — no rebuild, so nothing flickers. Reports the new
     /// state for persistence.
@@ -1768,14 +1791,23 @@ impl Sidebar {
                 let _ = s.output(SidebarOutput::AddAccount);
             });
             if self.collapsed {
-                add.set_icon_name("co.hyprlab.Hylki-list-add-symbolic");
+                add.set_icon_name("list-add-symbolic");
                 add.set_tooltip_text(Some(i18n("Add account").as_str()));
                 add.set_margin_top(12);
                 container.append(&add);
             } else {
                 let label_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-                label_box.append(&gtk::Image::from_icon_name("co.hyprlab.Hylki-list-add-symbolic"));
-                label_box.append(&gtk::Label::new(Some(i18n("Add first account").as_str())));
+                label_box.append(&gtk::Image::from_icon_name("list-add-symbolic"));
+
+                let add_label = gtk::Label::new(Some(i18n("Add first account").as_str()));
+                add_label.set_wrap(true);
+                add_label.set_wrap_mode(gtk::pango::WrapMode::WordChar);
+                add_label.set_justify(gtk::Justification::Center);
+                add_label.set_xalign(0.5);
+                add_label.set_hexpand(true);
+                label_box.append(&add_label);
+
+                add.set_halign(gtk::Align::Fill);
                 add.set_child(Some(&label_box));
                 let empty = gtk::Box::new(gtk::Orientation::Vertical, 12);
                 empty.set_valign(gtk::Align::Start);
@@ -1818,7 +1850,7 @@ impl Sidebar {
                 refresh.set_halign(gtk::Align::Center);
                 let stack = gtk::Stack::new();
                 stack.set_transition_type(gtk::StackTransitionType::Crossfade);
-                let icon = gtk::Image::from_icon_name("co.hyprlab.Hylki-view-refresh-symbolic");
+                let icon = gtk::Image::from_icon_name("view-refresh-symbolic");
                 stack.add_named(&icon, Some("icon"));
                 let spinner = gtk::Spinner::new();
                 spinner.set_spinning(self.busy);
@@ -1855,7 +1887,7 @@ impl Sidebar {
             hbox.add_css_class("folder-row");
             if self.collapsed {
                 // The rail has no room for a label; the icon carries it there.
-                let img = gtk::Image::from_icon_name("co.hyprlab.Hylki-mail-message-new-symbolic");
+                let img = gtk::Image::from_icon_name("mail-message-new-symbolic");
                 img.add_css_class("folder-icon");
                 pin_icon_size(&img);
                 hbox.set_halign(gtk::Align::Center);
@@ -1865,7 +1897,7 @@ impl Sidebar {
                 hbox.set_halign(gtk::Align::Center);
                 hbox.set_spacing(6);
                 let icon =
-                    gtk::Image::from_icon_name("co.hyprlab.Hylki-mail-message-new-symbolic");
+                    gtk::Image::from_icon_name("mail-message-new-symbolic");
                 icon.add_css_class("folder-icon");
                 hbox.append(&icon);
                 let label = gtk::Label::new(Some(i18n("New Message").as_str()));
@@ -1941,7 +1973,7 @@ impl Sidebar {
                 let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 12);
                 hbox.add_css_class("folder-row");
                 let img =
-                    gtk::Image::from_icon_name("co.hyprlab.Hylki-x-office-address-book-symbolic");
+                    gtk::Image::from_icon_name("x-office-address-book-symbolic");
                 img.add_css_class("folder-icon");
                 pin_icon_size(&img);
                 if self.collapsed {
@@ -1974,7 +2006,7 @@ impl Sidebar {
                         vec![vec![MenuEntry::new(i18n("Open GNOME Contacts"), move || {
                             let _ = s2.output(SidebarOutput::OpenGnomeContacts);
                         })
-                        .icon("co.hyprlab.Hylki-adw-external-link-symbolic")]],
+                        .icon("adw-external-link-symbolic")]],
                     );
                 });
                 row.add_controller(right_click);
@@ -1988,7 +2020,7 @@ impl Sidebar {
                 let row = gtk::ListBoxRow::new();
                 let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 12);
                 hbox.add_css_class("folder-row");
-                let img = gtk::Image::from_icon_name("co.hyprlab.Hylki-mail-attachment-symbolic");
+                let img = gtk::Image::from_icon_name("mail-attachment-symbolic");
                 img.add_css_class("folder-icon");
                 pin_icon_size(&img);
                 if self.collapsed {
@@ -2040,7 +2072,7 @@ impl Sidebar {
             let row = gtk::ListBoxRow::new();
             let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 12);
             hbox.add_css_class("folder-row");
-            let img = gtk::Image::from_icon_name("co.hyprlab.Hylki-mail-send-symbolic");
+            let img = gtk::Image::from_icon_name("mail-send-symbolic");
             img.add_css_class("folder-icon");
             pin_icon_size(&img);
             let badge = gtk::Label::new(Some(&self.outbox_count.to_string()));
@@ -2201,9 +2233,9 @@ impl Sidebar {
             // layout space, like the All Inboxes row's) or classic trailing,
             // per Settings → Chevron placement.
             let chevron = gtk::Image::from_icon_name(if folded {
-                "co.hyprlab.Hylki-pan-end-symbolic"
+                "pan-end-symbolic"
             } else {
-                "co.hyprlab.Hylki-pan-down-symbolic"
+                "pan-down-symbolic"
             });
             chevron.set_valign(gtk::Align::Center);
 
@@ -2375,9 +2407,9 @@ impl Sidebar {
             custom_list.add_css_class("navigation-sidebar");
             let custom_revealer = gtk::Revealer::new();
             let custom_chevron = gtk::Image::from_icon_name(if section.custom_expanded {
-                "co.hyprlab.Hylki-pan-down-symbolic"
+                "pan-down-symbolic"
             } else {
-                "co.hyprlab.Hylki-pan-end-symbolic"
+                "pan-end-symbolic"
             });
             let folders_toggle = gtk::Button::new();
             if !custom.is_empty() {
@@ -2397,7 +2429,7 @@ impl Sidebar {
                         // One right-pointing caret; the "open" class rotates it
                         // 90° via a CSS transition, so toggling spins smoothly
                         // instead of swapping glyphs.
-                        let img = gtk::Image::from_icon_name("co.hyprlab.Hylki-pan-end-symbolic");
+                        let img = gtk::Image::from_icon_name("pan-end-symbolic");
                         img.add_css_class("tree-expander-icon");
                         if !collapsed_nodes.contains(&folder.path) {
                             img.add_css_class("open");
@@ -2519,7 +2551,7 @@ impl Sidebar {
                 hb.add_css_class("folder-row");
                 if self.collapsed {
                     hb.set_halign(gtk::Align::Center);
-                    hb.append(&gtk::Image::from_icon_name("co.hyprlab.Hylki-folder-symbolic"));
+                    hb.append(&gtk::Image::from_icon_name("folder-symbolic"));
                     folders_toggle.set_tooltip_text(Some(i18n("Folders").as_str()));
                 } else {
                     if self.chevrons_left {
@@ -2551,7 +2583,7 @@ impl Sidebar {
             add_btn.add_css_class("add-folder-btn");
             let add_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
             add_box.add_css_class("folder-row");
-            let add_img = gtk::Image::from_icon_name("co.hyprlab.Hylki-list-add-symbolic");
+            let add_img = gtk::Image::from_icon_name("list-add-symbolic");
             pin_icon_size(&add_img);
             add_box.append(&add_img);
             if self.collapsed {
@@ -2621,7 +2653,7 @@ impl Sidebar {
             self.build_tags_section(container, Slot::Unified, filtered_below, sender);
         }
 
-        // Per-account avatar colours (background + readable text).
+        // Per-account avatar colors (background + readable text).
         let mut css = String::new();
         for s in &sections {
             let text = crate::color::readable_text(&s.color);
@@ -2964,7 +2996,7 @@ impl Sidebar {
                     let Some(section) = sections.iter().find(|s| s.account.id == r.account_id) else {
                         continue;
                     };
-                    // The glyph in the account's colour says whose folder
+                    // The glyph in the account's color says whose folder
                     // this is; the tooltip names the account.
                     let icon = filtered_folder_icon(&r.folder, section.account.id);
                     pin_icon_size(&icon);
@@ -3250,7 +3282,7 @@ impl Sidebar {
 
     /// A Filtered Folders section — the unified one, or an account's own:
     /// a toggle header and, under an animated revealer, one row per folder
-    /// (the filter-folder glyph in the account's colour, the folder name,
+    /// (the filter-folder glyph in the account's color, the folder name,
     /// its unread chip). In the rail the header is a glyph button and the
     /// rows are glyphs. The unified heading reads like the All Inboxes row
     /// (full-strength label); an account's reads like its "Folders" heading.
@@ -3282,7 +3314,7 @@ impl Sidebar {
         if self.collapsed {
             // The rail has no room for a label: Jason's filter-folder glyph
             // (a folder with a funnel's bars) carries the toggle alone.
-            let icon = gtk::Image::from_icon_name("co.hyprlab.Hylki-filter-folder-symbolic");
+            let icon = gtk::Image::from_icon_name("filter-folder-symbolic");
             hb.set_halign(gtk::Align::Center);
             let (overlay, b) = with_unread_overlay(&icon, unread);
             b.set_visible(show_chip);
@@ -3351,7 +3383,7 @@ impl Sidebar {
             // Laid out exactly like a folder under an account's "Folders"
             // heading — same builder, same leaf expander slot — so folders
             // read the same wherever they sit in the sidebar. Only the
-            // colour differs: the account's, which says whose folder this is.
+            // color differs: the account's, which says whose folder this is.
             let icon = filtered_folder_icon(&r.folder, section.account.id);
             let lead: Option<gtk::Widget> = if self.collapsed {
                 None
@@ -3423,7 +3455,7 @@ impl Sidebar {
 
     /// A Tags section (#71) — the unified one, or an account's own: a
     /// toggle header and, under an animated revealer, one row per tag
-    /// (colour disc, its name). From the unified section a tag shows every
+    /// (color disc, its name). From the unified section a tag shows every
     /// account's mail with it; from an account's, that account's alone.
     /// In the rail the header is a tag glyph and the rows are discs.
     fn build_tags_section(
@@ -3450,7 +3482,7 @@ impl Sidebar {
         let hb = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         hb.add_css_class("folder-row");
         if self.collapsed {
-            let icon = gtk::Image::from_icon_name("co.hyprlab.Hylki-tag-outline-symbolic");
+            let icon = gtk::Image::from_icon_name("tag-outline-symbolic");
             pin_icon_size(&icon);
             hb.set_halign(gtk::Align::Center);
             hb.append(&icon);
@@ -3767,6 +3799,11 @@ impl Sidebar {
     }
 
     fn restore_selection_inner(&mut self) {
+        // A view has been picked and has stuck: the launch view is done
+        // with, whichever it was.
+        if self.selected != Sel::None {
+            self.start = None;
+        }
         match self.selected.clone() {
             Sel::Unified => self.select_unified(),
             Sel::Attachments => self.select_attachments(),
@@ -3790,6 +3827,22 @@ impl Sidebar {
                 }
             }
             Sel::None => {
+                // The launch view (#256) is picked again on every pass until
+                // one sticks: the sections are rebuilt as each account's
+                // folders arrive, and a pick only takes once its row's
+                // selection has been handled. Until the account it names is
+                // listed with its folders, nothing else is picked, or All
+                // Inboxes would be on screen first and stay.
+                let start = self.start.clone();
+                if let Some(target) = start {
+                    match self.resolve_start(&target) {
+                        Some(Sel::UnifiedInbox(acc)) => return self.select_unified_inbox(acc),
+                        Some(Sel::Folder(acc, path)) => return self.select_folder(acc, &path),
+                        _ if !self.start_account_ready(&target) => return,
+                        // Listed, but with nowhere to land: the usual view.
+                        _ => self.start = None,
+                    }
+                }
                 if self.show_unified {
                     self.select_unified();
                 } else if let Some(acc) = self
@@ -3803,6 +3856,49 @@ impl Sidebar {
                 }
             }
         }
+    }
+
+    /// The row a launch view names, if it is on screen: an inbox in the
+    /// Inboxes list when that is open (or the accounts' own sections are
+    /// hidden), otherwise the folder in its account's section.
+    fn resolve_start(&self, target: &StartTarget) -> Option<Sel> {
+        let (email, path) = match target {
+            StartTarget::Inbox(email) => (email, None),
+            StartTarget::Folder(email, path) => (email, Some(path)),
+        };
+        let section = self
+            .sections
+            .iter()
+            .find(|s| s.account.email.eq_ignore_ascii_case(email))?;
+        let acc = section.account.id;
+        let inbox = section
+            .folders
+            .iter()
+            .find(|f| f.kind == FolderKind::Inbox)
+            .map(|f| f.path.clone());
+        // A folder since deleted or hidden: that account's inbox instead.
+        let path = path
+            .filter(|p| section.folders.iter().any(|f| &f.path == *p))
+            .cloned()
+            .or_else(|| inbox.clone())?;
+        let accounts_shown = self.show_accounts && !self.focus_hide_accounts;
+        let in_inboxes =
+            self.show_unified && self.unified_inboxes.iter().any(|r| r.account_id == acc);
+        if inbox.as_ref() == Some(&path) && in_inboxes && (self.unified_expanded || !accounts_shown) {
+            return Some(Sel::UnifiedInbox(acc));
+        }
+        if accounts_shown && section.folders.iter().any(|f| f.path == path) {
+            return Some(Sel::Folder(acc, path));
+        }
+        None
+    }
+
+    /// Whether the account a launch view names is listed with its folders.
+    fn start_account_ready(&self, target: &StartTarget) -> bool {
+        let (StartTarget::Inbox(email) | StartTarget::Folder(email, _)) = target;
+        self.sections
+            .iter()
+            .any(|s| s.account.email.eq_ignore_ascii_case(email) && !s.folders.is_empty())
     }
 
     fn select_unified(&self) {
@@ -3861,7 +3957,7 @@ impl Sidebar {
         }
         rev.set_reveal_child(true);
         if let Some(ch) = self.chevrons.get(&id) {
-            ch.set_icon_name(Some("co.hyprlab.Hylki-pan-down-symbolic"));
+            ch.set_icon_name(Some("pan-down-symbolic"));
         }
         if self.collapsed {
             self.rail_open_accounts.insert(id, true);
@@ -4189,7 +4285,7 @@ fn build_unified_inbox_row(
     // easy to tell apart in the All Inboxes view.
     let label = &section.account.label;
 
-    // Small account pill (colour + initials/emoji), like the header circle.
+    // Small account pill (color + initials/emoji), like the header circle.
     let id = section.account.id;
     let circle = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     circle.add_css_class("account-circle-sm");
@@ -4356,7 +4452,7 @@ pub(crate) fn folder_depth(folder: &Folder, all: &[&Folder]) -> usize {
 }
 
 /// The icon a folder row wears when a filter rule files into it: the
-/// filter-folder glyph in the account's colour, in place in the hierarchy.
+/// filter-folder glyph in the account's color, in place in the hierarchy.
 fn filter_icon(section: &SectionData, folder: &Folder) -> FolderGlyph {
     if !section.filtered.iter().any(|f| f.id == folder.id) {
         return FolderGlyph::Plain;
@@ -4375,17 +4471,17 @@ enum FolderGlyph {
     /// The caller's icon in place of it (a filter destination's tinted glyph).
     Icon(gtk::Image),
     /// The kind's own icon, grey as ever, with a small filter glyph in the
-    /// account's colour riding its corner: a main folder (Archive, Junk…)
+    /// account's color riding its corner: a main folder (Archive, Junk…)
     /// that a filter files into.
     Marked(u32),
 }
 
 /// The icon of a folder a filter files into: a custom folder wears the
 /// filter-folder glyph, a main folder (Archive, Junk…) keeps its own —
-/// either in the account's colour, which is what says "part of a filter".
+/// either in the account's color, which is what says "part of a filter".
 fn filtered_folder_icon(folder: &Folder, account_id: u32) -> gtk::Image {
     let name = if folder.kind == FolderKind::Custom {
-        "co.hyprlab.Hylki-filter-folder-symbolic"
+        "filter-folder-symbolic"
     } else {
         folder.kind.icon()
     };
@@ -4451,7 +4547,7 @@ fn build_folder_row(
         FolderGlyph::Marked(account_id) => {
             let overlay = gtk::Overlay::new();
             overlay.set_child(Some(&img));
-            let mark = gtk::Image::from_icon_name("co.hyprlab.Hylki-filter-symbolic");
+            let mark = gtk::Image::from_icon_name("filter-symbolic");
             mark.set_pixel_size(9);
             mark.add_css_class("filter-mark");
             mark.add_css_class(&format!("acct-tint-{account_id}"));
