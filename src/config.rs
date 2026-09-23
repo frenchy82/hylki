@@ -354,10 +354,26 @@ pub struct AccountConfig {
     /// matches.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pgp_key: Option<String>,
+    /// Whether this account's mail is merged into the unified section
+    /// (#267): Inboxes, Starred, Sent, Drafts, Archive, Filters and Tags.
+    /// Off keeps it to its own section; the tray and new-mail notifications
+    /// still count it, as they answer for every account. Written only when
+    /// off, so older files read the same.
+    #[serde(default = "default_enabled", skip_serializing_if = "is_true")]
+    pub in_unified: bool,
+    /// New messages, replies and forwards from this account open with
+    /// OpenPGP signing on (#267); the composer's toggle still turns it off
+    /// for one message.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub sign_by_default: bool,
 }
 
 fn is_zero(v: &u32) -> bool {
     *v == 0
+}
+
+fn is_true(b: &bool) -> bool {
+    *b
 }
 
 /// A send-as alias (#34): an extra From identity the composer offers. By
@@ -1130,6 +1146,9 @@ struct PrivacyFile {
     /// The app chrome's theme: follow the system, or force light/dark.
     #[serde(default)]
     app_theme: AppTheme,
+    /// The app's text size, in percent of the desktop's (#267).
+    #[serde(default = "default_text_scale")]
+    text_scale: u32,
     /// The appearance theme's id: a bundled palette (see `theme.rs`) painted
     /// over libadwaita's colors, or "system" for the stock GNOME look.
     /// Empty — a file written before themes existed — means the same.
@@ -1161,6 +1180,10 @@ struct PrivacyFile {
     /// the message.
     #[serde(default = "default_tray_mail")]
     tray_mail: bool,
+    /// Whether the launcher icon in a dock or task manager shows the unread
+    /// count (#271).
+    #[serde(default = "default_launcher_count")]
+    launcher_count: bool,
     /// Whether to say anything at all when remote content is blocked. Off hides
     /// the banner; it never changes what is blocked, only whether you're told.
     #[serde(default = "default_show_remote_banner")]
@@ -1446,6 +1469,7 @@ impl Default for PrivacyFile {
             rail_dots: true,
             rail_fold: RailFold::default(),
             app_theme: AppTheme::default(),
+            text_scale: default_text_scale(),
             theme: String::new(),
             preview_lines: default_preview_lines(),
             single_key_shortcuts: false,
@@ -1454,6 +1478,7 @@ impl Default for PrivacyFile {
             tray: false,
             tray_icon: TrayIcon::default(),
             tray_mail: default_tray_mail(),
+            launcher_count: default_launcher_count(),
         }
     }
 }
@@ -2880,6 +2905,17 @@ pub fn load_app_theme() -> AppTheme {
     load_privacy().app_theme
 }
 
+fn default_text_scale() -> u32 {
+    100
+}
+
+/// The app's text size in percent; anything Settings does not offer reads
+/// as the desktop's own size.
+pub fn load_text_scale() -> u32 {
+    let percent = load_privacy().text_scale;
+    if crate::text_scale::STEPS.contains(&percent) { percent } else { 100 }
+}
+
 /// The appearance theme's id; "system" (the stock look) when unset.
 pub fn load_theme() -> String {
     let id = load_privacy().theme;
@@ -2929,6 +2965,15 @@ fn default_tray_mail() -> bool {
 /// Whether the tray menu lists unread inbox mail.
 pub fn load_tray_mail() -> bool {
     load_privacy().tray_mail
+}
+
+fn default_launcher_count() -> bool {
+    true
+}
+
+/// Whether the launcher icon shows the unread count.
+pub fn load_launcher_count() -> bool {
+    load_privacy().launcher_count
 }
 
 /// Persist all app settings together (so no field is clobbered).
@@ -2997,6 +3042,7 @@ pub fn save_privacy(
     tray: bool,
     tray_icon: TrayIcon,
     tray_mail: bool,
+    launcher_count: bool,
     show_remote_banner: bool,
     sidebar_hover_expand: bool,
     remember_sidebar: bool,
@@ -3004,6 +3050,7 @@ pub fn save_privacy(
     rail_dots: bool,
     rail_fold: RailFold,
     app_theme: AppTheme,
+    text_scale: u32,
     theme: String,
     show_unified: bool,
     unified_chips: UnifiedChips,
@@ -3094,6 +3141,7 @@ pub fn save_privacy(
         tray,
         tray_icon,
         tray_mail,
+        launcher_count,
         show_remote_banner,
         sidebar_hover_expand,
         remember_sidebar,
@@ -3101,6 +3149,7 @@ pub fn save_privacy(
         rail_dots,
         rail_fold,
         app_theme,
+        text_scale,
         theme,
         show_unified,
         unified_chip: unified_chips.all_inboxes,
@@ -4214,6 +4263,8 @@ dest_path = "Lists"
             empty_junk_days: 0,
             empty_trash_days: 0,
             pgp_key: None,
+            in_unified: true,
+            sign_by_default: false,
         };
         acc.aliases = Vec::new();
         let bundle = SettingsBundle {
@@ -4253,6 +4304,24 @@ dest_path = "Lists"
         let back: SettingsBundle = toml::from_str(&text).unwrap();
         assert_eq!(back.accounts[0].empty_trash_days, 30);
         assert_eq!(back.accounts[0].empty_junk_days, 0);
+        // Left out of the unified section (#267): only "out" is written,
+        // and a file without the key keeps the account in.
+        assert!(!text.contains("in_unified"), "{text}");
+        assert!(back.accounts[0].in_unified);
+        let mut apart = aged;
+        apart.accounts[0].in_unified = false;
+        let text = toml::to_string_pretty(&apart).unwrap();
+        assert!(text.contains("in_unified = false"), "{text}");
+        let back: SettingsBundle = toml::from_str(&text).unwrap();
+        assert!(!back.accounts[0].in_unified);
+        // Signing by default (#267) is written only when on.
+        assert!(!text.contains("sign_by_default"), "{text}");
+        let mut signing = apart;
+        signing.accounts[0].sign_by_default = true;
+        let text = toml::to_string_pretty(&signing).unwrap();
+        assert!(text.contains("sign_by_default = true"), "{text}");
+        let back: SettingsBundle = toml::from_str(&text).unwrap();
+        assert!(back.accounts[0].sign_by_default);
     }
 
     #[test]

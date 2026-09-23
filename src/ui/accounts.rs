@@ -1305,6 +1305,18 @@ impl Component for AccountsWindow {
                                         connect_clicked => AccountsInput::ClearGlyph,
                                     },
                                 },
+
+                                // Off keeps a mailbox read on its own out of
+                                // the merged lists (#267); its own section,
+                                // the tray and notifications are unchanged.
+                                #[name = "in_unified_row"]
+                                adw::SwitchRow {
+                                    set_title: &i18n("Show in All Inboxes"),
+                                    set_subtitle: &i18n("Include this account's mail in the unified Inboxes, \
+                                                   Starred, Sent, Drafts and Archive, and in the unified \
+                                                   Filters and Tags."),
+                                    set_active: true,
+                                },
                             },
 
                             // Send-as aliases (#34): extra From identities the
@@ -1342,6 +1354,38 @@ impl Component for AccountsWindow {
                                     connect_row_activated[sender] => move |_, row| {
                                         sender.input(AccountsInput::AliasEdit(row.index() as usize));
                                     },
+                                },
+                            },
+
+                            add = &adw::PreferencesGroup {
+                                set_title: &i18n("Signature"),
+                                set_description: Some(
+                                    i18n("Appended to new messages sent from this account.").as_str()
+                                ),
+                                // A designed signature usually exists as HTML
+                                // already (#120): bring it in from its file, or
+                                // paste and edit the source directly.
+                                #[wrap(Some)]
+                                set_header_suffix = &gtk::Box {
+                                    set_spacing: 6,
+                                    set_valign: gtk::Align::Center,
+                                    gtk::Button {
+                                        set_label: &i18n("Edit HTML…"),
+                                        add_css_class: "flat",
+                                        connect_clicked => AccountsInput::SignatureEditSource,
+                                    },
+                                    gtk::Button {
+                                        set_label: &i18n("Import File…"),
+                                        add_css_class: "flat",
+                                        connect_clicked => AccountsInput::SignatureImport,
+                                    },
+                                },
+
+                                #[name = "sig_holder"]
+                                gtk::Box {
+                                    set_orientation: gtk::Orientation::Vertical,
+                                    set_height_request: 180,
+                                    set_margin_top: 6,
                                 },
                             },
 
@@ -1460,37 +1504,13 @@ impl Component for AccountsWindow {
                                     set_title: &i18n("Key"),
                                     set_subtitle: &i18n("Automatic uses the key whose address matches."),
                                 },
-                            },
-
-                            add = &adw::PreferencesGroup {
-                                set_title: &i18n("Signature"),
-                                set_description: Some(
-                                    i18n("Appended to new messages sent from this account.").as_str()
-                                ),
-                                // A designed signature usually exists as HTML
-                                // already (#120): bring it in from its file, or
-                                // paste and edit the source directly.
-                                #[wrap(Some)]
-                                set_header_suffix = &gtk::Box {
-                                    set_spacing: 6,
-                                    set_valign: gtk::Align::Center,
-                                    gtk::Button {
-                                        set_label: &i18n("Edit HTML…"),
-                                        add_css_class: "flat",
-                                        connect_clicked => AccountsInput::SignatureEditSource,
-                                    },
-                                    gtk::Button {
-                                        set_label: &i18n("Import File…"),
-                                        add_css_class: "flat",
-                                        connect_clicked => AccountsInput::SignatureImport,
-                                    },
-                                },
-
-                                #[name = "sig_holder"]
-                                gtk::Box {
-                                    set_orientation: gtk::Orientation::Vertical,
-                                    set_height_request: 180,
-                                    set_margin_top: 6,
+                                // For an account whose mail is always signed
+                                // (#267): the composer's toggle starts on,
+                                // and still turns it off for one message.
+                                #[name = "sign_default_row"]
+                                adw::SwitchRow {
+                                    set_title: &i18n("Sign messages by default"),
+                                    set_subtitle: &i18n("New messages, replies and forwards start with signing on."),
                                 },
                             },
 
@@ -3922,6 +3942,8 @@ fn read_account(
             let sel = widgets.pgp_key_row.selected() as usize;
             sel.checked_sub(1).and_then(|i| c.borrow().get(i).map(|k| k.fingerprint.clone()))
         }),
+        in_unified: widgets.in_unified_row.is_active(),
+        sign_by_default: widgets.sign_default_row.is_active(),
     }
 }
 
@@ -4046,6 +4068,8 @@ fn fill_editor(widgets: &AccountsWindowWidgets, acc: &AccountConfig) {
     widgets.empty_junk_row.set_selected(auto_empty_index(acc.empty_junk_days));
     widgets.empty_trash_row.set_selected(auto_empty_index(acc.empty_trash_days));
     fill_pgp_key_row(widgets, acc.pgp_key.as_deref());
+    widgets.in_unified_row.set_active(acc.in_unified);
+    widgets.sign_default_row.set_active(acc.sign_by_default);
     // Show the effective label (custom, or the email address).
     widgets
         .label_row
@@ -4128,6 +4152,8 @@ fn clear_editor(widgets: &AccountsWindowWidgets) {
     widgets.empty_junk_row.set_selected(0);
     widgets.empty_trash_row.set_selected(0);
     fill_pgp_key_row(widgets, None);
+    widgets.in_unified_row.set_active(true);
+    widgets.sign_default_row.set_active(false);
     widgets.smtp_user_row.set_text("");
     widgets.smtp_pass_row.set_text("");
     widgets.label_row.set_text("");

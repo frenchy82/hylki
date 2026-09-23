@@ -107,6 +107,24 @@ level), so a "Notes" folder on any other server is left alone. The look is
 taken once per account; a folder brought back from the Hidden Folders list
 stays back.
 
+### Keeping an account out of All Inboxes
+
+**Settings → Accounts → the account → Show in All Inboxes** decides whether
+the account's mail is merged into the unified section at the top of the
+sidebar. Switched off, the account's folders are left out of the unified
+Inboxes, Starred, Sent, Drafts and Archive rows, their account lists and
+unread counts, and the account's filter folders and tagged mail are left
+out of the unified Filters and Tags. The account keeps its own section in
+the sidebar, and a search still covers its mail.
+
+The tray icon's count and new-mail notifications still include the
+account. Clicking a notification for it opens the account's own Inbox.
+With fewer than two accounts left in the unified section, it is not shown,
+as with a single account, and **Open at startup: All Inboxes** opens the
+first account's Inbox instead.
+Stored on the account as `in_unified = false` in `accounts.toml`; without
+the key an account is included.
+
 ### Moving mail to another account
 
 **Move To** lists the folders of the account the mail is in first, then those
@@ -366,6 +384,13 @@ Each account uses the key whose address matches. To use another key for an
 account, open the account in *Settings → Mail Accounts* and choose it under
 *OpenPGP*.
 
+To sign everything an account sends, turn on **Sign messages by default**
+under the same *OpenPGP* group. New messages, replies and forwards from that
+account then open with Sign on, and a reopened draft does too. Changing From
+in the composer moves Sign to the new account's setting until you press Sign
+yourself; after that the composer leaves it as you set it. Stored on the
+account as `sign_by_default = true` in `accounts.toml`.
+
 **Reading the result**
 
 Beside a sender's name, a lock means the message was encrypted and a shield
@@ -443,12 +468,27 @@ System → GNOME Files** holds the same choices, so the questions can be
 skipped: what the files go into, what happens over the limit, and the limit
 itself.
 
+### Text size
+
+**Settings → Appearance → Text size** makes Hylki's text smaller or larger
+than the desktop's, from 90% to 150%: the sidebar, the message list,
+Settings and the text of messages. Icons keep their size. Default follows
+the desktop's own text scaling. Stored as `text_scale` in `privacy.toml`.
+
 ### App icon
 
 **Settings → Appearance → App icon** puts one of the gallery's icons on the
 app's launcher. An icon set on the launcher some other way, with a menu
 editor or by editing its `.desktop` file, is left alone when Hylki starts;
 Settings says so above the gallery, and picking an icon there replaces it.
+
+### Unread count on the app icon
+
+Hylki puts the number of unread inbox messages on its icon in the dock or
+task manager, the same count as the tray icon's dot. KDE Plasma's task
+manager shows it, and so do the Dash to Dock and Dash to Panel extensions
+for GNOME; GNOME's own dash has no badges. **Settings → System → Unread count
+on the app icon** turns it off. Stored as `launcher_count` in `privacy.toml`.
 
 ### Notifications
 

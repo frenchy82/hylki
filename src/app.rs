@@ -651,6 +651,8 @@ pub struct AppModel {
     rail_fold: config::RailFold,
     /// The app chrome's theme preference (follow system / light / dark).
     app_theme: config::AppTheme,
+    /// The app's text size in percent of the desktop's (#267).
+    text_scale: u32,
     /// The appearance theme: a bundled palette's id, or "system" for the
     /// stock GNOME colors (see `theme.rs`).
     theme: String,
@@ -725,6 +727,8 @@ pub struct AppModel {
     tray_enabled: bool,
     tray_icon: config::TrayIcon,
     tray_mail: bool,
+    /// The unread count on the launcher icon (#271).
+    launcher_count: bool,
     /// The chosen app icon (an `app_icon::catalog` id); the tray draws it.
     app_icon: String,
     /// A restart is on its way (Restart Now clicked, settle timer running).
@@ -1428,6 +1432,7 @@ pub enum AppMsg {
     SetRailFold(config::RailFold),
     /// Preference: the app chrome's theme (follow system / light / dark).
     SetAppTheme(config::AppTheme),
+    SetTextScale(u32),
     /// Preference: the appearance theme (Settings gallery).
     SetTheme(String),
     /// The cursor entered the sidebar pane — open the hover peek (rail +
@@ -1440,6 +1445,7 @@ pub enum AppMsg {
     SetTray(bool),
     SetTrayIcon(config::TrayIcon),
     SetTrayMail(bool),
+    SetLauncherCount(bool),
     /// Preference: the app icon (Settings gallery or the wizard).
     SetAppIcon(String),
     /// "Restart Now" from the app-icon heads-up: quit into the restart
@@ -3126,6 +3132,7 @@ impl SimpleComponent for AppModel {
             rail_dots: config::load_rail_dots(),
             rail_fold: config::load_rail_fold(),
             app_theme: config::load_app_theme(),
+            text_scale: config::load_text_scale(),
             theme: config::load_theme(),
             current: None,
             allowed_senders: config::load_allowed_senders(),
@@ -3161,6 +3168,7 @@ impl SimpleComponent for AppModel {
             tray_enabled: config::load_tray(),
             tray_icon: config::load_tray_icon(),
             tray_mail: config::load_tray_mail(),
+            launcher_count: config::load_launcher_count(),
             app_icon: crate::app_icon::init_on_startup(),
             restart_pending: false,
             tray: None,
@@ -3426,6 +3434,7 @@ impl SimpleComponent for AppModel {
 
         // The app-wide theme choice must be in force before the first frame.
         apply_app_theme(model.app_theme);
+        crate::text_scale::apply(model.text_scale);
         let reader_tag_btn = model.reader_tag_btn.clone();
         let reader_move_btn = model.reader_move_btn.clone();
         let widgets = view_output!();
@@ -5342,7 +5351,10 @@ impl SimpleComponent for AppModel {
                     // unfolds the account to show where that is. Both emit
                     // the (cached) list synchronously, so the SelectAndLoad
                     // that follows finds the row and opens it.
-                    if kind == FolderKind::Inbox && self.unified_inboxes_shown() {
+                    if kind == FolderKind::Inbox
+                        && self.unified_inboxes_shown()
+                        && self.in_unified(account_id)
+                    {
                         self.open_unified(UnifiedView::Kind(FolderKind::Inbox));
                     } else {
                         self.select_folder(account_id, folder_id, name, path);
@@ -5668,6 +5680,14 @@ impl SimpleComponent for AppModel {
                 }
             }
 
+            AppMsg::SetTextScale(percent) => {
+                if self.text_scale != percent {
+                    self.text_scale = percent;
+                    crate::text_scale::apply(percent);
+                    self.save_settings();
+                }
+            }
+
             AppMsg::SetTheme(id) => {
                 if self.theme != id {
                     self.theme = id.clone();
@@ -5697,9 +5717,11 @@ impl SimpleComponent for AppModel {
                     }
                 }
                 CtxAction::MarkAllInboxesRead => {
+                    // The inboxes the row merges, as its chip counts them.
                     let inboxes: Vec<(u32, u32)> = self
                         .accounts
                         .iter()
+                        .filter(|a| self.in_unified(a.id))
                         .filter_map(|a| self.inbox_of(a.id).map(|f| (a.id, f.id)))
                         .collect();
                     for (account_id, folder_id) in inboxes {
@@ -5710,6 +5732,7 @@ impl SimpleComponent for AppModel {
                     let reqs: Vec<(u32, u32, String)> = self
                         .accounts
                         .iter()
+                        .filter(|a| self.in_unified(a.id))
                         .filter_map(|a| self.inbox_of(a.id).map(|f| (a.id, f.id, f.path.clone())))
                         .collect();
                     for (account_id, folder_id, path) in reqs {
@@ -7116,15 +7139,25 @@ impl SimpleComponent for AppModel {
                 }
             }
 
+            AppMsg::SetLauncherCount(on) => {
+                if self.launcher_count != on {
+                    self.launcher_count = on;
+                    self.save_settings();
+                    self.push_launcher_count();
+                }
+            }
+
             AppMsg::QuitFromTray => {
                 // The same teardown as Ctrl+Q: geometry saved, then exit.
                 relm4::main_application().activate_action("quit", None);
             }
 
             AppMsg::TrayViewUnread => {
-                let unified = self.show_unified_pref
-                    && (self.config.iter().filter(|c| c.enabled).count() > 1
-                        || (demo_mode() && self.accounts.len() > 1));
+                // The tray counts every inbox (#267): when all of its unread
+                // mail is in accounts left out of All Inboxes, that view
+                // would show none of it.
+                let unified = self.unified_inboxes_shown()
+                    && (self.unified_inboxes_unread() > 0 || self.inboxes_unread() == 0);
                 if unified {
                     // Through the sidebar, so its highlight moves too; it
                     // answers with UnifiedSelected.
@@ -8273,6 +8306,12 @@ impl SimpleComponent for AppModel {
             AppMsg::AddFirstAccount => self.open_settings_window(&sender, true, true),
 
             AppMsg::AccountSaved { original_email, account } => {
+                // Whether the account joined or left the unified section
+                // (#267): the merged views open now are redrawn without it.
+                let unified_changed = original_email
+                    .as_ref()
+                    .and_then(|orig| self.effective_config().iter().find(|c| &c.email == orig))
+                    .is_some_and(|old| old.in_unified != account.in_unified);
                 // Demo mode: the edit lands on the in-memory stand-in (so a
                 // new color, emoji or picture shows in the sidebar and the
                 // reader at once) and nothing is written or reconnected.
@@ -8290,8 +8329,12 @@ impl SimpleComponent for AppModel {
                     self.rebuild_sidebar();
                     self.warm_own_gravatars(&sender);
                     self.refresh_faces();
+                    if unified_changed {
+                        self.reload_unified_views(self.unified.then_some(self.unified_view), &sender);
+                    }
                     return;
                 }
+                let open_unified = self.unified.then_some(self.unified_view);
                 let new_email = account.email.clone();
                 // Remember the secret we expect to persist, so we can verify the
                 // keyring actually stored it (a silent keyring failure would
@@ -8368,6 +8411,9 @@ impl SimpleComponent for AppModel {
                         self.warm_own_gravatars(&sender);
                         self.refresh_faces();
                         self.reconnect_all(&sender);
+                        if unified_changed {
+                            self.reload_unified_views(open_unified, &sender);
+                        }
                     }
                     Err(e) => self.notifications.emit(NotifyInput::Push {
                         text: i18n_f("Could not save account: {e}", &[("e", &(e).to_string())]),
@@ -10508,6 +10554,7 @@ impl AppModel {
             self.tray_enabled,
             self.tray_icon,
             self.tray_mail,
+            self.launcher_count,
             self.show_remote_banner,
             self.sidebar_hover_expand,
             self.remember_sidebar,
@@ -10515,6 +10562,7 @@ impl AppModel {
             self.rail_dots,
             self.rail_fold,
             self.app_theme,
+            self.text_scale,
             self.theme.clone(),
             self.show_unified_pref,
             self.unified_chips,
@@ -12078,7 +12126,7 @@ impl AppModel {
     fn push_unread_counts(&self) {
         let folders = self.folder_unread.clone();
         let unified = self.unified_unread();
-        self.sidebars_emit(SidebarInput::SetUnread { folders, unified: self.inboxes_unread() });
+        self.sidebars_emit(SidebarInput::SetUnread { folders, unified: self.unified_inboxes_unread() });
         // The counted total is what GNOME shows beside Hylki in Background
         // Apps, so a process with no window still says what it is there for.
         if self.run_in_background.get() {
@@ -12089,7 +12137,15 @@ impl AppModel {
         if let Some(tray) = &self.tray {
             tray.set_unread(self.inboxes_unread());
         }
+        self.push_launcher_count();
         self.push_tray_mail();
+    }
+
+    /// The launcher icon's badge (#271): the same inboxes total as the tray
+    /// icon's dot, or nothing when Settings has it off.
+    fn push_launcher_count(&self) {
+        let count = if self.launcher_count { self.inboxes_unread() } else { 0 };
+        crate::launcher_badge::set_count(count);
     }
 
     /// Publish the tray item with the current icon, unread total and mail list.
@@ -12312,6 +12368,7 @@ impl AppModel {
                     .iter()
                     .any(|r| r.account_email.eq_ignore_ascii_case(&account.email));
                 Some(SectionData {
+                    in_unified: self.in_unified(account.id),
                     has_filters,
                     collapsed: self.collapsed.contains(email),
                     custom_expanded: self.folders_expanded.contains(email),
@@ -12338,7 +12395,7 @@ impl AppModel {
         // The other unified rows are as pointless with one account.
         let unified_kinds =
             if multi_account { self.unified_kinds } else { config::UnifiedKinds::NONE };
-        let unified_unread = self.inboxes_unread();
+        let unified_unread = self.unified_inboxes_unread();
         let unified_folders = self.unified_folder_refs();
         self.sidebars_emit(SidebarInput::SetContents {
             sections,
@@ -13053,24 +13110,50 @@ impl AppModel {
         }
     }
 
-    /// More than one account is switched on. Counted from config, not from
-    /// the workers that have reported in: at startup the accounts stream in
-    /// one by one, and counting only the connected ones made the first
-    /// sidebar build look single-account — its default selection then
+    /// More than one switched-on account takes part in the unified section:
+    /// with one, or none (every other account left out of it, #267), its
+    /// rows would only repeat an account's own. Counted from config, not
+    /// from the workers that have reported in: at startup the accounts
+    /// stream in one by one, and counting only the connected ones made the
+    /// first sidebar build look single-account — its default selection then
     /// landed on that account's inbox (possibly inside a collapsed section,
     /// so nothing visibly highlighted) instead of the "All Inboxes" the app
     /// should open with.
     fn multi_account(&self) -> bool {
-        self.config.iter().filter(|c| c.enabled).count() > 1
-            // The demo has no config-file accounts, but its two mock accounts
+        self.config.iter().filter(|c| c.enabled && c.in_unified).count() > 1
+            // The demo has no config-file accounts, but its mock accounts
             // deserve the same All Inboxes opening as a real multi-account setup.
-            || (demo_mode() && self.accounts.len() > 1)
+            || (demo_mode() && self.accounts.iter().filter(|a| self.in_unified(a.id)).count() > 1)
     }
 
     /// The sidebar has an Inboxes row: the preference is on and there is
     /// more than one account to merge.
     fn unified_inboxes_shown(&self) -> bool {
         self.show_unified_pref && self.multi_account()
+    }
+
+    /// An account joined or left the unified section (#267): the unified
+    /// Tags lists are read again, and the unified view that was open
+    /// (`open`) is loaded afresh over the accounts now in it. When its row
+    /// went with the change (one account or none left in the section), the
+    /// sidebar has already moved to the first inbox instead.
+    fn reload_unified_views(&mut self, open: Option<UnifiedView>, sender: &ComponentSender<Self>) {
+        self.tag_view_cache.retain(|(scope, _), _| scope.is_some());
+        if self.tag_view.as_ref().is_some_and(|(scope, _)| scope.is_none()) {
+            self.refresh_tag_view(sender);
+        }
+        let Some(view) = open else { return };
+        let listed = match view {
+            UnifiedView::Kind(FolderKind::Inbox) => self.unified_inboxes_shown(),
+            UnifiedView::Kind(kind) => self.multi_account() && self.unified_kinds.has(kind),
+            UnifiedView::Filtered => self.unified_filtered,
+        };
+        if listed {
+            // A reconnect has emptied the account list; each account's
+            // folders asks for its slice again as they arrive.
+            self.unified_boot_requested.clear();
+            self.open_unified(view);
+        }
     }
 
     /// Open a unified view (Inboxes, Starred, Sent, …, Filtered): the merged
@@ -14103,12 +14186,14 @@ impl AppModel {
                 let cfg = Some(cfg);
                 let signature = cfg.and_then(|c| c.signature.clone()).unwrap_or_default();
                 let pgp_key = cfg.and_then(|c| c.pgp_key.clone());
+                let sign_default = cfg.is_some_and(|c| c.sign_by_default);
                 let mut identities = vec![ComposeAccount {
                     id,
                     label,
                     signature: signature.clone(),
                     email: email.clone(),
                     pgp_key: pgp_key.clone(),
+                    sign_default,
                     alias_from: None,
                 }];
                 for alias in cfg.map(|c| c.aliases.as_slice()).unwrap_or_default() {
@@ -14127,6 +14212,7 @@ impl AppModel {
                         signature: signature.clone(),
                         email: addr,
                         pgp_key: pgp_key.clone(),
+                        sign_default,
                         alias_from: Some(display),
                     });
                 }
@@ -16395,7 +16481,7 @@ impl AppModel {
             .accounts
             .iter()
             .map(|a| a.id)
-            .filter(|id| scope.map_or(true, |s| s == *id))
+            .filter(|id| self.in_tag_scope(scope, *id))
             .collect();
         for id in ids {
             if self.keyword_sync_at.get(&id).is_some_and(|t| now.duration_since(*t) < PAUSE) {
@@ -16404,6 +16490,12 @@ impl AppModel {
             self.keyword_sync_at.insert(id, now);
             self.send_to(id, MailRequest::RefreshKeywords { keywords: keywords.clone() });
         }
+    }
+
+    /// Whether a tag view covers an account: its own, or for the unified
+    /// Tags row every account merged into the unified section (#267).
+    fn in_tag_scope(&self, scope: Option<u32>, account_id: u32) -> bool {
+        scope.map_or_else(|| self.in_unified(account_id), |id| id == account_id)
     }
 
     fn tag_view_keywords(&self, kw: &Option<String>) -> Vec<String> {
@@ -16450,7 +16542,7 @@ impl AppModel {
             .accounts
             .iter()
             .map(|a| a.id)
-            .filter(|id| scope.map_or(true, |s| s == *id))
+            .filter(|id| self.in_tag_scope(scope, *id))
             .collect();
         let s = sender.clone();
         std::thread::spawn(move || {
@@ -16479,7 +16571,7 @@ impl AppModel {
         rows: Vec<(u32, String, Message)>,
     ) -> Vec<Message> {
         let (scope, kw) = key;
-        let in_scope = |account_id: u32| scope.map_or(true, |id| id == account_id);
+        let in_scope = |account_id: u32| self.in_tag_scope(*scope, account_id);
         let keywords = self.tag_view_keywords(kw);
         let mut out: Vec<Message> = Vec::new();
         let mut seen_rows: std::collections::HashSet<(u32, u32, u32)> =
@@ -16781,6 +16873,7 @@ impl AppModel {
             spellcheck: self.spellcheck,
             spellcheck_langs: self.spellcheck_langs.clone(),
             app_theme: self.app_theme,
+            text_scale: self.text_scale,
             theme: self.theme.clone(),
             preview_lines: self.preview_lines,
             single_key_shortcuts: self.single_key.get(),
@@ -16789,6 +16882,7 @@ impl AppModel {
             tray: self.tray_enabled,
             tray_icon: self.tray_icon,
             tray_mail: self.tray_mail,
+            launcher_count: self.launcher_count,
             app_icon: self.app_icon.clone(),
             accounts_panel: accounts.widget().clone().upcast::<gtk::Widget>(),
             accounts_sender: accounts.sender().clone(),
@@ -16891,6 +16985,7 @@ impl AppModel {
                 PrefOutput::SetFocusMode(focus) => AppMsg::SetFocusMode(focus),
                 PrefOutput::SetRailFold(fold) => AppMsg::SetRailFold(fold),
                 PrefOutput::SetAppTheme(theme) => AppMsg::SetAppTheme(theme),
+                PrefOutput::SetTextScale(percent) => AppMsg::SetTextScale(percent),
                 PrefOutput::SetTheme(id) => AppMsg::SetTheme(id),
                 PrefOutput::SetSettingsOpenAccounts(on) => {
                     AppMsg::SetSettingsOpenAccounts(on)
@@ -16902,6 +16997,7 @@ impl AppModel {
                 PrefOutput::SetTray(on) => AppMsg::SetTray(on),
                 PrefOutput::SetTrayIcon(icon) => AppMsg::SetTrayIcon(icon),
                 PrefOutput::SetTrayMail(on) => AppMsg::SetTrayMail(on),
+                PrefOutput::SetLauncherCount(on) => AppMsg::SetLauncherCount(on),
                 PrefOutput::SetAppIcon(id) => AppMsg::SetAppIcon(id),
                 PrefOutput::SetPaletteCollapse(secs) => AppMsg::SetPaletteCollapse(secs),
                 PrefOutput::SetCardPaletteCollapse(secs) => AppMsg::SetCardPaletteCollapse(secs),
@@ -18817,6 +18913,7 @@ impl AppModel {
             UnifiedView::Kind(kind) => self
                 .accounts
                 .iter()
+                .filter(|a| self.in_unified(a.id))
                 .filter_map(|a| self.folder_of_kind(a.id, kind).map(|f| (a.id, f.id, f.path.clone())))
                 .collect(),
             UnifiedView::Filtered => self
@@ -18831,7 +18928,8 @@ impl AppModel {
     fn is_unified_target(&self, account_id: u32, folder_id: u32) -> bool {
         match self.unified_view {
             UnifiedView::Kind(kind) => {
-                self.folder_of_kind(account_id, kind).is_some_and(|f| f.id == folder_id)
+                self.in_unified(account_id)
+                    && self.folder_of_kind(account_id, kind).is_some_and(|f| f.id == folder_id)
             }
             UnifiedView::Filtered => self
                 .unified_folder_refs()
@@ -18892,7 +18990,9 @@ impl AppModel {
     /// The folders the unified "Filtered Folders" section lists: the
     /// destination of every rule, in account order then rule order, without
     /// repeats; nothing when Settings → Sidebar has the section off. An
-    /// inbox destination is already an All Inboxes row and is skipped.
+    /// inbox destination is already an All Inboxes row and is skipped, and
+    /// an account left out of the unified section (#267) lists its rules'
+    /// folders under its own section only.
     fn unified_folder_refs(&self) -> Vec<UnifiedFolderRef> {
         let mut out: Vec<UnifiedFolderRef> = Vec::new();
         if !self.unified_filtered {
@@ -18900,6 +19000,9 @@ impl AppModel {
         }
         for email in self.ordered_emails() {
             let Some(account) = self.accounts.iter().find(|a| a.email == email) else { continue };
+            if !self.in_unified(account.id) {
+                continue;
+            }
             let Some(folders) = self.folders.get(&account.id) else { continue };
             let rules = self.filters.iter().filter(|r| r.account_email.eq_ignore_ascii_case(&email));
             for r in rules {
@@ -18941,15 +19044,36 @@ impl AppModel {
         self.accounts.iter().map(|a| self.counted_unread(a.id)).sum()
     }
 
-    /// The number behind the unified Inboxes chip: the inboxes alone. A
-    /// filter's destination has its own row (under Filters, and in its
-    /// account), with its own chip, so it is not counted here as well.
+    /// The number behind the tray icon's dot and its menu: every
+    /// account's inbox alone, whether or not the account is in the unified
+    /// section (#267). A filter's destination has its own row (under
+    /// Filters, and in its account), with its own chip, so it is not
+    /// counted here as well.
     fn inboxes_unread(&self) -> u32 {
         self.accounts
             .iter()
             .filter_map(|a| self.inbox_of(a.id))
             .map(|f| self.folder_unread_of(f))
             .sum()
+    }
+
+    /// The number behind the unified Inboxes chip: the inboxes that view
+    /// merges, which leaves out the accounts kept apart from it (#267).
+    fn unified_inboxes_unread(&self) -> u32 {
+        self.accounts
+            .iter()
+            .filter(|a| self.in_unified(a.id))
+            .filter_map(|a| self.inbox_of(a.id))
+            .map(|f| self.folder_unread_of(f))
+            .sum()
+    }
+
+    /// Whether an account's mail is merged into the unified section (#267).
+    /// An account with no config (never the case outside a test) is in.
+    fn in_unified(&self, account_id: u32) -> bool {
+        self.effective_config()
+            .get(account_id.saturating_sub(1) as usize)
+            .is_none_or(|c| c.in_unified)
     }
 
     /// A watcher or sweep reported a changed unread count for `folder_id`.
@@ -19592,6 +19716,8 @@ fn demo_account_configs() -> Vec<AccountConfig> {
         empty_junk_days: 0,
         empty_trash_days: 0,
         pgp_key: None,
+        in_unified: true,
+        sign_by_default: false,
     };
     vec![
         mk("Jason M.", "jason@hylki.hyprlab.co", "#3584e4", "🚀"),
@@ -20398,8 +20524,13 @@ fn install_scheme_css(window: &impl IsA<gtk::Widget>) {
     let window = window.clone().upcast::<gtk::Widget>();
     let apply = move |provider: &gtk::CssProvider, dark: bool| {
         // The selection is the GNOME accent itself at full saturation, with
-        // high-contrast white text — and it stays full whether or not the
-        // list holds focus, so clicking into the reader never dims it.
+        // high-contrast white text, while the list holds the keyboard. A
+        // click into the reader hands focus straight back to the list, so
+        // that is nearly always; when something else really has it (the
+        // composer, a search entry, or focus lost in a rebuild) the row
+        // turns grey, as a sidebar's does, so it is plain that the list's
+        // keys will not reach it (#274). An inactive window keeps the
+        // accent: focus is not lost, the window is just behind another.
         let shield = if dark { "#ffca28" } else { "#ff7800" };
         // The compose surface sits on the reader's deeper page ground — the
         // same shade the threaded cards float on, as the theme defines it.
@@ -20409,6 +20540,14 @@ fn install_scheme_css(window: &impl IsA<gtk::Widget>) {
              .message-listbox > row.activatable:selected:hover .message-row, \
              .message-listbox > row.activatable:selected:active .message-row {{ \
                background-color: @accent_bg_color; color: white; }}\
+             .message-listbox:not(:focus-within):not(:backdrop) > row:selected .message-row, \
+             .message-listbox:not(:focus-within):not(:backdrop) > row.activatable:selected:hover .message-row, \
+             .message-listbox:not(:focus-within):not(:backdrop) > row.activatable:selected:active .message-row {{ \
+               background-color: alpha(@window_fg_color, 0.14); color: @window_fg_color; }}\
+             .message-listbox:not(:focus-within):not(:backdrop) > row:selected .message-row label {{ \
+               color: @window_fg_color; }}\
+             .message-listbox:not(:focus-within):not(:backdrop) > row:selected .message-row .unread-dot {{ \
+               background: @accent_bg_color; }}\
              .remote-alert image {{ color: {shield}; }}\
              .inline-compose-surface, .compose-pane {{ background-color: {page}; }}\
              .reader-split > separator {{ background-color: {page}; }}"

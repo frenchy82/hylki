@@ -3156,6 +3156,7 @@ impl SimpleComponent for MessageList {
                     row_box -> gtk::ListBox {},
 
                     // Bottom loading indicator while the rest of the folder streams in.
+                    #[name = "loading_box"]
                     gtk::Box {
                         add_css_class: "list-loading",
                         set_halign: gtk::Align::Center,
@@ -3165,8 +3166,9 @@ impl SimpleComponent for MessageList {
                         #[watch]
                         set_visible: model.is_loading_more(),
 
+                        // Spun only while on screen: see init.
+                        #[name = "loading_spinner"]
                         gtk::Spinner {
-                            set_spinning: true,
                             set_width_request: 18,
                             set_height_request: 18,
                         },
@@ -3297,6 +3299,40 @@ impl SimpleComponent for MessageList {
 
         let widgets = view_output!();
         model.scroller = Some(widgets.scroller.clone());
+
+        // A spinning spinner redraws every frame for as long as it is mapped,
+        // and a scrolled window keeps the one under the rows mapped when it
+        // is scrolled out of sight. It shows until the folder's index is
+        // complete, which for a large Gmail folder waits on a backfill that
+        // can take hours, so an idle window was redrawn thirty times a
+        // second (#275). Spin only while it is in view.
+        {
+            let spinner = widgets.loading_spinner.clone();
+            let loading = widgets.loading_box.clone();
+            let scroller = widgets.scroller.clone();
+            let update = std::rc::Rc::new(move || {
+                let in_view = loading.is_mapped()
+                    && loading
+                        .compute_point(&scroller, &gtk::graphene::Point::new(0.0, 0.0))
+                        .is_some_and(|p| {
+                            p.y() < scroller.height() as f32 && p.y() + loading.height() as f32 > 0.0
+                        });
+                if spinner.is_spinning() != in_view {
+                    spinner.set_spinning(in_view);
+                }
+            });
+            let adj = widgets.scroller.vadjustment();
+            let u = update.clone();
+            adj.connect_value_changed(move |_| u());
+            let u = update.clone();
+            adj.connect_changed(move |_| u());
+            let u = update.clone();
+            widgets.loading_box.connect_map(move |_| u());
+            let u = update.clone();
+            widgets.loading_box.connect_unmap(move |_| u());
+            let u = update.clone();
+            widgets.loading_box.connect_visible_notify(move |_| u());
+        }
         model.search_entry = Some(widgets.search_entry.clone());
 
         // The scope picker sizes itself to its widest entry ("All folders"), which
@@ -3409,19 +3445,10 @@ impl SimpleComponent for MessageList {
             }
             MessageListInput::RunQueuedRebuild => {
                 if let Some(preserve) = self.rebuild_queued.take() {
-                    // A rebuild destroys the focused row (or the whole list
-                    // box), and focus falls to the window, where Delete does
-                    // nothing: a background sync in the middle of deleting
-                    // mail one by one left the key dead until a row was
-                    // clicked (#255). Put focus back where it was.
-                    let had_focus = self.focus_in_list();
                     if preserve {
                         self.rebuild_preserving_scroll();
                     } else {
                         self.rebuild();
-                    }
-                    if had_focus {
-                        self.restore_list_focus();
                     }
                 }
                 // The rows exist now: run the selection that waited for them.
@@ -5343,11 +5370,22 @@ impl MessageList {
                     swipe_sensitivity: self.swipe_sensitivity.clone(),
                 });
             }
+            // Discarding the rows destroys the focused one (or hides the
+            // whole list box), and focus falls to the window, where Delete,
+            // Enter and Shift+arrows do nothing and Tab or an arrow key can
+            // carry it into the reader. A background sync did it in the
+            // middle of deleting mail one by one (#255), and so did every
+            // other full rebuild: a contact photo or Gravatar arriving, the
+            // date turning over (#274). Put focus back where it was.
+            let had_focus = !append_only && self.focus_in_list();
             if !append_only {
                 self.discard_rows();
             }
             self.pending_rows = inits;
             self.fill_rows(FIRST_ROWS);
+            if had_focus {
+                self.restore_list_focus();
+            }
         }
 
         tracing::debug!(
