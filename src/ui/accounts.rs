@@ -40,9 +40,8 @@ enum ProviderKind {
 /// their servers from `crate::oauth::preset`; Manual/Custom are user-entered).
 pub(crate) struct Provider {
     label: &'static str,
-    /// The brand id of its mark (`brand::image_or`): "mail", the blue
-    /// envelope, for manual IMAP/POP3; "mail-oauth", the yellow one, for
-    /// custom OAuth.
+    /// The brand id of its mark (`brand::mark`): "mail", the IMAP tile, for
+    /// manual IMAP/POP3; "mail-oauth", the OAuth tile, for custom OAuth.
     brand: &'static str,
     kind: ProviderKind,
     imap_host: &'static str,
@@ -57,6 +56,11 @@ impl Provider {
     /// module, which owns the table's meaning.
     pub(crate) fn wizard_password_provider(&self) -> bool {
         self.is_password()
+    }
+    /// Custom OAuth, which the wizard lists but hands to Settings: its
+    /// client and endpoint fields live in the account editor only.
+    pub(crate) fn wizard_opens_settings(&self) -> bool {
+        self.kind == ProviderKind::CustomOAuth
     }
     pub(crate) fn wizard_label(&self) -> &'static str {
         self.label
@@ -99,11 +103,13 @@ impl Provider {
 const APP_PW: &str = i18n_noop("Requires an app-specific password (not your normal login password).");
 
 /// The Provider dropdown, in display order. The plain IMAP/POP3 entry first
-/// (the default), then the OAuth options, the major app-password IMAP
-/// providers, and custom OAuth last. IMAP uses SSL/TLS on 993; SMTP uses
+/// (the default) with custom OAuth under it, the two generic entries
+/// together, then the OAuth providers and the major app-password IMAP
+/// providers. IMAP uses SSL/TLS on 993; SMTP uses
 /// implicit TLS on 465 or STARTTLS on 587.
 pub(crate) const PROVIDERS: &[Provider] = &[
     Provider { label: "IMAP/POP3 Account", brand: "mail", kind: ProviderKind::Manual, imap_host: "", imap_port: 0, smtp_host: "", smtp_port: 0, hint: i18n_noop("Enter your server details manually.") },
+    Provider { label: "Custom (OAuth)…", brand: "mail-oauth", kind: ProviderKind::CustomOAuth, imap_host: "", imap_port: 0, smtp_host: "", smtp_port: 0, hint: i18n_noop("Enter your provider's OAuth endpoints, then sign in.") },
     Provider { label: "Google (Gmail) — sign in", brand: "gmail", kind: ProviderKind::Google, imap_host: "", imap_port: 0, smtp_host: "", smtp_port: 0, hint: i18n_noop("Sign in with your browser — no password needed.") },
     Provider { label: "Microsoft 365 / Outlook", brand: "outlook", kind: ProviderKind::Microsoft, imap_host: "", imap_port: 0, smtp_host: "", smtp_port: 0, hint: i18n_noop("Sign in through GNOME Online Accounts.") },
     Provider { label: "iCloud", brand: "icloud", kind: ProviderKind::Preset, imap_host: "imap.mail.me.com", imap_port: 993, smtp_host: "smtp.mail.me.com", smtp_port: 587, hint: APP_PW },
@@ -116,7 +122,6 @@ pub(crate) const PROVIDERS: &[Provider] = &[
     Provider { label: "GMX", brand: "gmx", kind: ProviderKind::Preset, imap_host: "imap.gmx.com", imap_port: 993, smtp_host: "mail.gmx.com", smtp_port: 587, hint: i18n_noop("Enable POP/IMAP access in GMX settings first.") },
     Provider { label: "Yandex Mail", brand: "yandex", kind: ProviderKind::Preset, imap_host: "imap.yandex.com", imap_port: 993, smtp_host: "smtp.yandex.com", smtp_port: 465, hint: APP_PW },
     Provider { label: "Mail.com", brand: "mailcom", kind: ProviderKind::Preset, imap_host: "imap.mail.com", imap_port: 993, smtp_host: "smtp.mail.com", smtp_port: 587, hint: "" },
-    Provider { label: "Custom (OAuth)…", brand: "mail-oauth", kind: ProviderKind::CustomOAuth, imap_host: "", imap_port: 0, smtp_host: "", smtp_port: 0, hint: i18n_noop("Enter your provider's OAuth endpoints, then sign in.") },
 ];
 
 /// Dropdown index of the "IMAP/POP3 Account" manual entry (the default).
@@ -269,6 +274,9 @@ pub enum AccountsInput {
     /// The app's live folder lists per account email (for Special Folders).
     SetFolderChoices(std::collections::HashMap<String, Vec<(String, String)>>),
     AddAccount,
+    /// A new account with Custom (OAuth) already picked: the welcome
+    /// wizard's hand-off for the one provider it does not set up itself.
+    AddCustomOAuthAccount,
     EditAccount(usize),
     /// Open the editor for the account with this address (the sidebar's
     /// "Account Settings…"), leaving another account's editor if one is up.
@@ -952,13 +960,13 @@ impl Component for AccountsWindow {
                             // locally. Both facts belong together, above the fields
                             // they explain.
                             // The provider's mark over the form, following
-                            // the Provider picker (a generic envelope for
-                            // manual IMAP and custom OAuth).
+                            // the Provider picker (a protocol tile for manual
+                            // IMAP and custom OAuth). Filled in apply_provider.
                             add = &adw::PreferencesGroup {
                                 #[name = "provider_mark"]
-                                gtk::Image {
-                                    set_pixel_size: 56,
+                                gtk::Box {
                                     set_halign: gtk::Align::Center,
+                                    set_height_request: 56,
                                     set_margin_bottom: 6,
                                 },
                             },
@@ -1662,7 +1670,7 @@ impl Component for AccountsWindow {
         widgets.goa_group.set_visible(!model.goa.is_empty());
         widgets
             .protocol_row
-            .set_model(Some(&gtk::StringList::new(&["IMAP", "POP3", "JMAP"])));
+            .set_model(Some(&gtk::StringList::new(&["IMAP", "POP3"])));
 
         // The Provider dropdown picks both the sign-in method and (for known
         // providers) the servers. The default popup ellipsizes items; a factory
@@ -1832,7 +1840,7 @@ impl Component for AccountsWindow {
                 self.senders.widget().invalidate_filter();
                 self.blacklist.widget().invalidate_filter();
             }
-            AccountsInput::AddAccount => {
+            m @ (AccountsInput::AddAccount | AccountsInput::AddCustomOAuthAccount) => {
                 self.editing = None;
                 self.emoji = None;
                 self.avatar = None;
@@ -1849,6 +1857,9 @@ impl Component for AccountsWindow {
                 set_connection_editable(widgets, true);
                 widgets.goa_banner.set_visible(false);
                 widgets.keyring_note.set_visible(true);
+                if matches!(m, AccountsInput::AddCustomOAuthAccount) {
+                    widgets.provider_row.set_selected(kind_index(ProviderKind::CustomOAuth));
+                }
                 self.apply_provider(widgets);
                 self.sig_editor(widgets).set_html("");
                 widgets.color_btn.set_rgba(&parse_color(DEFAULT_COLOR));
@@ -2159,7 +2170,10 @@ impl Component for AccountsWindow {
                 });
             }
 
-            AccountsInput::ProtocolChanged => apply_protocol(widgets),
+            AccountsInput::ProtocolChanged => {
+                apply_protocol(widgets);
+                self.refresh_provider_mark(widgets);
+            }
             AccountsInput::ProviderChanged => {
                 // Editing a GOA account: the provider dropdown is hidden and the
                 // connection section deliberately not shown — but filling the
@@ -2823,7 +2837,7 @@ impl Component for AccountsWindow {
                     ),
                     Err(e) => format!("✗ {label}: {e}"),
                 };
-                let protocol = protocol_at(widgets.protocol_row.selected());
+                let protocol = form_protocol(widgets);
                 let incoming_label = match protocol {
                     Protocol::Pop3 => "POP3",
                     Protocol::Jmap => "JMAP",
@@ -3357,7 +3371,7 @@ impl AccountsWindow {
             // The provider's mark, right of the name and address, named on
             // hover.
             let brand = brand_for_account(acc);
-            let mark = crate::brand::image_or(brand, 24, crate::brand::GENERIC_MAIL);
+            let mark = crate::brand::mark(brand, 24, crate::brand::GENERIC_MAIL);
             mark.set_tooltip_text(Some(&provider_name(brand, acc)));
             hbox.append(&slot(mark.upcast_ref(), &mark_widths));
 
@@ -3462,7 +3476,7 @@ impl AccountsWindow {
         for (pos, g) in self.goa.iter().enumerate() {
             let row = adw::ActionRow::new();
             row.set_title(&g.email);
-            row.add_prefix(&crate::brand::image_or(brand_for_goa(&g.provider), 24, crate::brand::GENERIC_MAIL));
+            row.add_prefix(&crate::brand::mark(brand_for_goa(&g.provider), 24, crate::brand::GENERIC_MAIL));
             let mut subtitle = if g.provider.is_empty() {
                 "Mail".to_string()
             } else {
@@ -3497,13 +3511,28 @@ impl AccountsWindow {
     /// Adapt the editor to the selected provider: show server + credential fields
     /// for password providers, the OAuth sign-in for OAuth providers, and fill in
     /// the servers for known providers.
+    /// The mark over the form: a GNOME Online Account's comes from the
+    /// account itself (its picker is hidden), otherwise the picker's, with
+    /// a manual account's tile naming the protocol chosen below it.
+    fn refresh_provider_mark(&self, widgets: &AccountsWindowWidgets) {
+        let p = provider_at(widgets.provider_row.selected());
+        let editing_goa = self.editing.and_then(|i| self.accounts.get(i)).filter(|a| a.goa_id.is_some());
+        let brand = editing_goa.map(brand_for_account).unwrap_or_else(|| {
+            if matches!(p.kind, ProviderKind::Manual | ProviderKind::Jmap) {
+                manual_brand(form_protocol(widgets), &widgets.host_row.text())
+            } else {
+                p.brand
+            }
+        });
+        while let Some(child) = widgets.provider_mark.first_child() {
+            widgets.provider_mark.remove(&child);
+        }
+        widgets.provider_mark.append(&crate::brand::mark(brand, 56, crate::brand::GENERIC_MAIL));
+    }
+
     fn apply_provider(&self, widgets: &AccountsWindowWidgets) {
         let p = provider_at(widgets.provider_row.selected());
-        // The mark over the form: a GNOME Online Account's comes from the
-        // account itself (its picker is hidden), otherwise the picker's.
-        let editing_goa = self.editing.and_then(|i| self.accounts.get(i)).filter(|a| a.goa_id.is_some());
-        let brand = editing_goa.map(brand_for_account).unwrap_or(p.brand);
-        crate::brand::set_image(&widgets.provider_mark, brand, 56, crate::brand::GENERIC_MAIL);
+        self.refresh_provider_mark(widgets);
         let is_password = p.is_password();
         let is_oauth = p.is_oauth();
         let is_custom = matches!(p.kind, ProviderKind::CustomOAuth);
@@ -3523,7 +3552,8 @@ impl AccountsWindow {
         widgets.provider_row.set_subtitle(&hint);
 
         // Server/credential fields (password or Custom-OAuth manual servers).
-        widgets.protocol_row.set_visible(is_password);
+        // JMAP is the Stalwart entry's own protocol, not a choice.
+        widgets.protocol_row.set_visible(is_password && p.kind != ProviderKind::Jmap);
         widgets.host_row.set_visible(show_servers);
         widgets.port_row.set_visible(show_servers);
         widgets.smtp_row.set_visible(show_servers);
@@ -3569,7 +3599,6 @@ impl AccountsWindow {
             widgets.smtp_port_row.set_text(&sp.to_string());
         }
         if p.kind == ProviderKind::Jmap {
-            widgets.protocol_row.set_selected(protocol_index(Protocol::Jmap));
             widgets.port_row.set_text("443");
             widgets.smtp_row.set_text("");
         }
@@ -3679,7 +3708,7 @@ pub(crate) fn provider_factory() -> gtk::SignalListItemFactory {
         let Some(old) = bx.first_child() else { return };
         let label = old.next_sibling().and_downcast::<gtk::Label>();
         bx.remove(&old);
-        bx.prepend(&crate::brand::image_or(provider.brand, 20, crate::brand::GENERIC_MAIL));
+        bx.prepend(&crate::brand::mark(provider.brand, 20, crate::brand::GENERIC_MAIL));
         if let Some(label) = label {
             label.set_label(&name);
         }
@@ -3867,7 +3896,7 @@ fn read_account(
     emoji: Option<String>,
     avatar: Option<String>,
 ) -> AccountConfig {
-    let protocol = protocol_at(widgets.protocol_row.selected());
+    let protocol = form_protocol(widgets);
     let default_port = match protocol {
         Protocol::Pop3 => 995,
         Protocol::Jmap => 443,
@@ -4212,11 +4241,22 @@ fn provider_index_for_account(acc: &AccountConfig) -> u32 {
     preset_index_for_host(&acc.imap_host)
 }
 
-/// The Incoming Protocol row's entries, in dropdown order.
-const PROTOCOLS: [Protocol; 3] = [Protocol::Imap, Protocol::Pop3, Protocol::Jmap];
+/// The Incoming Protocol row's entries, in dropdown order. JMAP is not one:
+/// it comes with the Stalwart entry in the Provider picker.
+const PROTOCOLS: [Protocol; 2] = [Protocol::Imap, Protocol::Pop3];
 
 fn protocol_at(idx: u32) -> Protocol {
     PROTOCOLS.get(idx as usize).copied().unwrap_or_default()
+}
+
+/// The protocol the form stands for: the provider's own for one that has
+/// one (Stalwart's JMAP), otherwise the Incoming Protocol row's.
+fn form_protocol(widgets: &AccountsWindowWidgets) -> Protocol {
+    if provider_at(widgets.provider_row.selected()).kind == ProviderKind::Jmap {
+        Protocol::Jmap
+    } else {
+        protocol_at(widgets.protocol_row.selected())
+    }
 }
 
 fn protocol_index(protocol: Protocol) -> u32 {
@@ -4227,7 +4267,7 @@ fn protocol_index(protocol: Protocol) -> u32 {
 /// through its server, so the SMTP rows go, and the server row takes a host
 /// or a URL rather than an IMAP host and port.
 fn apply_protocol(widgets: &AccountsWindowWidgets) {
-    let jmap = protocol_at(widgets.protocol_row.selected()) == Protocol::Jmap;
+    let jmap = form_protocol(widgets) == Protocol::Jmap;
     // Only where the servers are shown at all (OAuth providers hide them).
     let servers_shown = widgets.host_row.is_visible();
     widgets.smtp_row.set_visible(servers_shown && !jmap);
@@ -4254,8 +4294,7 @@ fn brand_for_account(acc: &AccountConfig) -> &'static str {
         return "outlook";
     }
     if acc.protocol == Protocol::Jmap {
-        // Fastmail speaks JMAP too; anyone else on it is most likely Stalwart.
-        return if acc.imap_host.to_ascii_lowercase().contains("fastmail") { "fastmail" } else { "stalwart" };
+        return manual_brand(Protocol::Jmap, &acc.imap_host);
     }
     if let Some(s) = acc.oauth_settings.as_ref().filter(|_| acc.oauth) {
         if s.token_url.contains("googleapis") {
@@ -4279,7 +4318,22 @@ fn brand_for_account(acc: &AccountConfig) -> &'static str {
     if host.contains("proton") {
         return "proton";
     }
-    provider_at(preset_index_for_host(&host)).brand
+    match provider_at(preset_index_for_host(&host)).brand {
+        "mail" => manual_brand(acc.protocol, &host),
+        brand => brand,
+    }
+}
+
+/// The mark for an account whose servers were entered by hand: its
+/// protocol's tile, or for JMAP the server most likely behind it.
+fn manual_brand(protocol: Protocol, host: &str) -> &'static str {
+    match protocol {
+        // Fastmail speaks JMAP too; anyone else on it is most likely Stalwart.
+        Protocol::Jmap if host.to_ascii_lowercase().contains("fastmail") => "fastmail",
+        Protocol::Jmap => "stalwart",
+        Protocol::Pop3 => "mail-pop3",
+        _ => "mail",
+    }
 }
 
 /// What the account list's provider mark says on hover: the provider's
@@ -4291,7 +4345,7 @@ fn provider_name(brand: &str, acc: &AccountConfig) -> String {
         "outlook" => i18n("Microsoft 365 / Outlook"),
         "proton" => i18n("Proton Mail"),
         "mail-oauth" => i18n("Custom OAuth"),
-        "mail" => {
+        "mail" | "mail-pop3" => {
             let host = acc.imap_host.trim();
             if host.is_empty() {
                 i18n("IMAP/POP3 account")
@@ -4352,7 +4406,10 @@ mod tests {
         assert!(p.is_password());
         assert_eq!(p.wizard_protocol(), Protocol::Jmap);
         assert!(p.imap_host.is_empty(), "a self-hosted server has no preset host");
-        assert_eq!(protocol_at(protocol_index(Protocol::Jmap)), Protocol::Jmap);
+        // The Incoming Protocol row offers IMAP and POP3 only; a JMAP
+        // account's comes from its provider.
+        assert_eq!(protocol_at(protocol_index(Protocol::Pop3)), Protocol::Pop3);
+        assert_eq!(protocol_index(Protocol::Jmap), 0);
         assert_eq!(protocol_at(99), Protocol::Imap);
         let acc = AccountConfig { protocol: Protocol::Jmap, imap_host: "mail.example.org".into(), ..crate::ui::welcome::blank_account() };
         assert_eq!(provider_at(provider_index_for_account(&acc)).label, p.label);

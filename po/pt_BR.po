@@ -913,6 +913,18 @@ msgstr "(sem assunto)"
 msgid "Default"
 msgstr "Padrão"
 
+msgid "Blue square"
+msgstr ""
+
+msgid "Navy square"
+msgstr ""
+
+msgid "Yellow square"
+msgstr ""
+
+msgid "Classic"
+msgstr ""
+
 msgid ""
 "Hylki checks for new mail and shows notifications while its window is closed."
 msgstr ""
@@ -1125,6 +1137,9 @@ msgstr ""
 msgid "Enter your server details manually."
 msgstr "Digite manualmente os dados do servidor."
 
+msgid "Enter your provider's OAuth endpoints, then sign in."
+msgstr "Digite os endpoints OAuth do provedor e depois entre."
+
 msgid "Sign in with your browser — no password needed."
 msgstr "Entre pelo navegador — não é necessária uma senha."
 
@@ -1141,9 +1156,6 @@ msgstr ""
 
 msgid "Enable POP/IMAP access in GMX settings first."
 msgstr "Ative primeiro o acesso POP/IMAP nas configurações do GMX."
-
-msgid "Enter your provider's OAuth endpoints, then sign in."
-msgstr "Digite os endpoints OAuth do provedor e depois entre."
 
 msgid "Mail Accounts"
 msgstr "Contas de email"
@@ -1458,6 +1470,18 @@ msgstr ""
 msgid "Add Alias…"
 msgstr "Adicionar endereço alternativo…"
 
+msgid "Signature"
+msgstr "Assinatura"
+
+msgid "Appended to new messages sent from this account."
+msgstr "Adicionada às novas mensagens enviadas a partir desta conta."
+
+msgid "Edit HTML…"
+msgstr "Editar HTML…"
+
+msgid "Import File…"
+msgstr "Importar arquivo…"
+
 msgid "Syncing"
 msgstr "Sincronização"
 
@@ -1560,18 +1584,6 @@ msgstr "Mensagens individuais como cartões"
 
 msgid "New messages, replies and forwards start with signing on."
 msgstr ""
-
-msgid "Signature"
-msgstr "Assinatura"
-
-msgid "Appended to new messages sent from this account."
-msgstr "Adicionada às novas mensagens enviadas a partir desta conta."
-
-msgid "Edit HTML…"
-msgstr "Editar HTML…"
-
-msgid "Import File…"
-msgstr "Importar arquivo…"
 
 msgid ""
 "Your password is stored in the system keyring (secret-service), never in "
@@ -4356,6 +4368,15 @@ msgstr ""
 "Mostra o aviso que oferece a opção de carregar o conteúdo. Desativar esta "
 "opção apenas oculta o aviso — o conteúdo remoto continua bloqueado."
 
+msgid "Warn when the addressing doesn't match"
+msgstr ""
+
+msgid ""
+"Shows the red banner over a message marked \"Check this sender\", such as "
+"one whose replies go to another domain. The badge beside the sender still "
+"marks it, and a possible forgery always shows the banner."
+msgstr ""
+
 msgid "Use Gravatar when a contact has no photo"
 msgstr "Usar o Gravatar quando um contato não tiver foto"
 
@@ -5014,7 +5035,19 @@ msgstr "Começar a ler"
 msgid "Continue"
 msgstr "Continuar"
 
+#, fuzzy
+msgid "Set Up in Settings"
+msgstr "Configurações"
+
+msgid ""
+"An OAuth account needs your provider's sign-in details. Settings opens on it "
+"when you finish here."
+msgstr ""
+
 msgid "Port"
+msgstr ""
+
+msgid "✓ Settings opens on your OAuth account at the end"
 msgstr ""
 
 msgid "Enter your email address and password first."
@@ -5099,6 +5132,10 @@ msgstr "As mensagens devolvidas seriam enviadas para {rp}"
 
 msgid "The sender's name says \"{claimed}\" but the address is {from}"
 msgstr "O nome do remetente indica «{claimed}», mas o endereço é {from}"
+
+msgid ""
+"{from} checks out, but the addressing doesn't match the name on the message."
+msgstr ""
 
 #, fuzzy
 msgid "Could not reach the JMAP server: {e}"

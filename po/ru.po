@@ -930,6 +930,18 @@ msgstr "(без темы)"
 msgid "Default"
 msgstr "По умолчанию"
 
+msgid "Blue square"
+msgstr ""
+
+msgid "Navy square"
+msgstr ""
+
+msgid "Yellow square"
+msgstr ""
+
+msgid "Classic"
+msgstr ""
+
 msgid ""
 "Hylki checks for new mail and shows notifications while its window is closed."
 msgstr ""
@@ -1139,6 +1151,9 @@ msgstr "Требуется пароль приложения (не ваш обы
 msgid "Enter your server details manually."
 msgstr "Введите параметры сервера вручную."
 
+msgid "Enter your provider's OAuth endpoints, then sign in."
+msgstr "Укажите конечные точки OAuth вашего провайдера и войдите."
+
 msgid "Sign in with your browser — no password needed."
 msgstr "Войдите через браузер — пароль не требуется."
 
@@ -1155,9 +1170,6 @@ msgstr ""
 
 msgid "Enable POP/IMAP access in GMX settings first."
 msgstr "Сначала включите доступ по POP/IMAP в настройках GMX."
-
-msgid "Enter your provider's OAuth endpoints, then sign in."
-msgstr "Укажите конечные точки OAuth вашего провайдера и войдите."
 
 msgid "Mail Accounts"
 msgstr "Почтовые учётные записи"
@@ -1467,6 +1479,18 @@ msgstr ""
 msgid "Add Alias…"
 msgstr "Добавить псевдоним…"
 
+msgid "Signature"
+msgstr "Подпись"
+
+msgid "Appended to new messages sent from this account."
+msgstr "Добавляется к новым сообщениям, отправляемым с этой учётной записи."
+
+msgid "Edit HTML…"
+msgstr "Редактировать HTML…"
+
+msgid "Import File…"
+msgstr "Импортировать файл…"
+
 msgid "Syncing"
 msgstr "Синхронизация"
 
@@ -1566,18 +1590,6 @@ msgstr "Одиночные сообщения в виде карточек"
 
 msgid "New messages, replies and forwards start with signing on."
 msgstr ""
-
-msgid "Signature"
-msgstr "Подпись"
-
-msgid "Appended to new messages sent from this account."
-msgstr "Добавляется к новым сообщениям, отправляемым с этой учётной записи."
-
-msgid "Edit HTML…"
-msgstr "Редактировать HTML…"
-
-msgid "Import File…"
-msgstr "Импортировать файл…"
 
 msgid ""
 "Your password is stored in the system keyring (secret-service), never in "
@@ -4347,6 +4359,15 @@ msgstr ""
 "параметра лишь скрывает уведомление — само удалённое содержимое по-прежнему "
 "блокируется."
 
+msgid "Warn when the addressing doesn't match"
+msgstr ""
+
+msgid ""
+"Shows the red banner over a message marked \"Check this sender\", such as "
+"one whose replies go to another domain. The badge beside the sender still "
+"marks it, and a possible forgery always shows the banner."
+msgstr ""
+
 msgid "Use Gravatar when a contact has no photo"
 msgstr "Использовать Gravatar, если у контакта нет фото"
 
@@ -5005,7 +5026,19 @@ msgstr "Начать работу"
 msgid "Continue"
 msgstr "Продолжить"
 
+#, fuzzy
+msgid "Set Up in Settings"
+msgstr "Настройки"
+
+msgid ""
+"An OAuth account needs your provider's sign-in details. Settings opens on it "
+"when you finish here."
+msgstr ""
+
 msgid "Port"
+msgstr ""
+
+msgid "✓ Settings opens on your OAuth account at the end"
 msgstr ""
 
 msgid "Enter your email address and password first."
@@ -5089,6 +5122,10 @@ msgstr "Уведомления о недоставке будут отправл
 
 msgid "The sender's name says \"{claimed}\" but the address is {from}"
 msgstr "В имени отправителя указано «{claimed}», но адрес — {from}"
+
+msgid ""
+"{from} checks out, but the addressing doesn't match the name on the message."
+msgstr ""
 
 #, fuzzy
 msgid "Could not reach the JMAP server: {e}"

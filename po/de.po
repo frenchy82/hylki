@@ -902,6 +902,18 @@ msgstr "(kein Betreff)"
 msgid "Default"
 msgstr "Standard"
 
+msgid "Blue square"
+msgstr ""
+
+msgid "Navy square"
+msgstr ""
+
+msgid "Yellow square"
+msgstr ""
+
+msgid "Classic"
+msgstr ""
+
 msgid ""
 "Hylki checks for new mail and shows notifications while its window is closed."
 msgstr ""
@@ -1126,6 +1138,11 @@ msgstr ""
 msgid "Enter your server details manually."
 msgstr "Geben Sie Ihre Serverdaten manuell ein."
 
+msgid "Enter your provider's OAuth endpoints, then sign in."
+msgstr ""
+"Geben Sie die OAuth-Endpunkte Ihres Providers ein und melden Sie sich dann "
+"an."
+
 msgid "Sign in with your browser — no password needed."
 msgstr "Melden Sie sich mit Ihrem Browser an - kein Passwort erforderlich."
 
@@ -1144,11 +1161,6 @@ msgstr ""
 
 msgid "Enable POP/IMAP access in GMX settings first."
 msgstr "Aktivieren Sie zuerst den POP/IMAP-Zugriff in den GMX-Einstellungen."
-
-msgid "Enter your provider's OAuth endpoints, then sign in."
-msgstr ""
-"Geben Sie die OAuth-Endpunkte Ihres Providers ein und melden Sie sich dann "
-"an."
 
 msgid "Mail Accounts"
 msgstr "E-Mail-Konten"
@@ -1462,6 +1474,18 @@ msgstr ""
 msgid "Add Alias…"
 msgstr "Alias hinzufügen…"
 
+msgid "Signature"
+msgstr "Signatur"
+
+msgid "Appended to new messages sent from this account."
+msgstr "Wird an neue Nachrichten dieses Kontos angehängt."
+
+msgid "Edit HTML…"
+msgstr "HTML bearbeiten…"
+
+msgid "Import File…"
+msgstr "Datei importieren…"
+
 msgid "Syncing"
 msgstr "Synchronisierung"
 
@@ -1568,18 +1592,6 @@ msgstr "Einzelne Nachrichten als Karten"
 
 msgid "New messages, replies and forwards start with signing on."
 msgstr ""
-
-msgid "Signature"
-msgstr "Signatur"
-
-msgid "Appended to new messages sent from this account."
-msgstr "Wird an neue Nachrichten dieses Kontos angehängt."
-
-msgid "Edit HTML…"
-msgstr "HTML bearbeiten…"
-
-msgid "Import File…"
-msgstr "Datei importieren…"
 
 msgid ""
 "Your password is stored in the system keyring (secret-service), never in "
@@ -4376,6 +4388,15 @@ msgstr ""
 "verbirgt sich nur der Hinweis - entfernte Inhalte werden immer noch "
 "blockiert."
 
+msgid "Warn when the addressing doesn't match"
+msgstr ""
+
+msgid ""
+"Shows the red banner over a message marked \"Check this sender\", such as "
+"one whose replies go to another domain. The badge beside the sender still "
+"marks it, and a possible forgery always shows the banner."
+msgstr ""
+
 msgid "Use Gravatar when a contact has no photo"
 msgstr "Verwenden Sie Gravatar, wenn ein Kontakt kein Foto hat"
 
@@ -5033,8 +5054,20 @@ msgstr "Nachrichten lesen"
 msgid "Continue"
 msgstr "Weiter"
 
+#, fuzzy
+msgid "Set Up in Settings"
+msgstr "Einstellungen"
+
+msgid ""
+"An OAuth account needs your provider's sign-in details. Settings opens on it "
+"when you finish here."
+msgstr ""
+
 msgid "Port"
 msgstr "Port"
+
+msgid "✓ Settings opens on your OAuth account at the end"
+msgstr ""
 
 msgid "Enter your email address and password first."
 msgstr "Geben Sie zuerst Ihre E-Mail-Adresse und Ihr Passwort ein."
@@ -5118,6 +5151,10 @@ msgstr "Fehlermeldungen würden an {rp} gehen"
 
 msgid "The sender's name says \"{claimed}\" but the address is {from}"
 msgstr "Der Name des Absenders sagt \"{claimed}\", aber die Adresse ist {from}"
+
+msgid ""
+"{from} checks out, but the addressing doesn't match the name on the message."
+msgstr ""
 
 msgid "Could not reach the JMAP server: {e}"
 msgstr "Konnte den JMAP-Server nicht erreichen: {e}"

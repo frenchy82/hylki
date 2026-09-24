@@ -917,6 +917,18 @@ msgstr "(χωρίς θέμα)"
 msgid "Default"
 msgstr "Προεπιλογή"
 
+msgid "Blue square"
+msgstr ""
+
+msgid "Navy square"
+msgstr ""
+
+msgid "Yellow square"
+msgstr ""
+
+msgid "Classic"
+msgstr ""
+
 msgid ""
 "Hylki checks for new mail and shows notifications while its window is closed."
 msgstr ""
@@ -1133,6 +1145,10 @@ msgstr ""
 msgid "Enter your server details manually."
 msgstr "Εισαγάγετε χειροκίνητα τα στοιχεία του διακομιστή σας."
 
+msgid "Enter your provider's OAuth endpoints, then sign in."
+msgstr ""
+"Εισαγάγετε τα τελικά σημεία OAuth του παρόχου σας και έπειτα συνδεθείτε."
+
 msgid "Sign in with your browser — no password needed."
 msgstr ""
 "Συνδεθείτε με το πρόγραμμα περιήγησης — δεν απαιτείται κωδικός πρόσβασης."
@@ -1150,10 +1166,6 @@ msgstr ""
 
 msgid "Enable POP/IMAP access in GMX settings first."
 msgstr "Ενεργοποιήστε πρώτα την πρόσβαση POP/IMAP στις ρυθμίσεις GMX."
-
-msgid "Enter your provider's OAuth endpoints, then sign in."
-msgstr ""
-"Εισαγάγετε τα τελικά σημεία OAuth του παρόχου σας και έπειτα συνδεθείτε."
 
 msgid "Mail Accounts"
 msgstr "Λογαριασμοί αλληλογραφίας"
@@ -1474,6 +1486,19 @@ msgstr ""
 msgid "Add Alias…"
 msgstr "Προσθήκη ψευδωνύμου…"
 
+msgid "Signature"
+msgstr "Υπογραφή"
+
+msgid "Appended to new messages sent from this account."
+msgstr ""
+"Προστίθεται στα νέα μηνύματα που αποστέλλονται από αυτόν τον λογαριασμό."
+
+msgid "Edit HTML…"
+msgstr "Επεξεργασία HTML…"
+
+msgid "Import File…"
+msgstr "Εισαγωγή αρχείου…"
+
 msgid "Syncing"
 msgstr "Συγχρονισμός"
 
@@ -1577,19 +1602,6 @@ msgstr "Μεμονωμένα μηνύματα ως κάρτες"
 
 msgid "New messages, replies and forwards start with signing on."
 msgstr ""
-
-msgid "Signature"
-msgstr "Υπογραφή"
-
-msgid "Appended to new messages sent from this account."
-msgstr ""
-"Προστίθεται στα νέα μηνύματα που αποστέλλονται από αυτόν τον λογαριασμό."
-
-msgid "Edit HTML…"
-msgstr "Επεξεργασία HTML…"
-
-msgid "Import File…"
-msgstr "Εισαγωγή αρχείου…"
 
 msgid ""
 "Your password is stored in the system keyring (secret-service), never in "
@@ -4406,6 +4418,15 @@ msgstr ""
 "αποκρύπτει μόνο την ειδοποίηση — το απομακρυσμένο περιεχόμενο εξακολουθεί να "
 "αποκλείεται με τον ίδιο τρόπο."
 
+msgid "Warn when the addressing doesn't match"
+msgstr ""
+
+msgid ""
+"Shows the red banner over a message marked \"Check this sender\", such as "
+"one whose replies go to another domain. The badge beside the sender still "
+"marks it, and a possible forgery always shows the banner."
+msgstr ""
+
 msgid "Use Gravatar when a contact has no photo"
 msgstr "Χρήση Gravatar όταν μια επαφή δεν έχει φωτογραφία"
 
@@ -5068,7 +5089,19 @@ msgstr "Έναρξη ανάγνωσης"
 msgid "Continue"
 msgstr "Συνέχεια"
 
+#, fuzzy
+msgid "Set Up in Settings"
+msgstr "Ρυθμίσεις"
+
+msgid ""
+"An OAuth account needs your provider's sign-in details. Settings opens on it "
+"when you finish here."
+msgstr ""
+
 msgid "Port"
+msgstr ""
+
+msgid "✓ Settings opens on your OAuth account at the end"
 msgstr ""
 
 msgid "Enter your email address and password first."
@@ -5156,6 +5189,10 @@ msgstr "Οι επιστροφές θα πήγαιναν στη διεύθυνσ�
 msgid "The sender's name says \"{claimed}\" but the address is {from}"
 msgstr ""
 "Το όνομα του αποστολέα αναφέρει «{claimed}», αλλά η διεύθυνση είναι {from}"
+
+msgid ""
+"{from} checks out, but the addressing doesn't match the name on the message."
+msgstr ""
 
 #, fuzzy
 msgid "Could not reach the JMAP server: {e}"

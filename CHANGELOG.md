@@ -1,5 +1,48 @@
 # Changelog
 
+## 1.42.0-beta.1 — 2026-09-24
+
+The first beta on the new schedule (#277): betas carry what is on main,
+and a stable 1.x.0 follows about once a week. This one previews 1.42.0.
+
+- **Changed: JMAP is set up through the Stalwart (JMAP) provider only.**
+  The Incoming Protocol row of an IMAP/POP3 account offers IMAP and POP3,
+  and is hidden for Stalwart, whose protocol is always JMAP. Accounts
+  already on JMAP open under Stalwart as before. Custom (OAuth) moves up
+  the Provider list to sit under IMAP/POP3 Account, and the welcome
+  wizard lists it too: choosing it there opens Settings on a new OAuth
+  account when the wizard finishes, since its sign-in details are only
+  in the account editor.
+- **Changed: Mail Accounts marks an account with no provider logo by how it
+  connects** (#277): a blue IMAP, red POP3 or yellow OAuth tile in place
+  of the blue and yellow envelopes, in the account list, the Provider
+  picker and over the account editor.
+- **Changed: the app icon gallery offers five icons** (#277, suggested by
+  yioannides): the default, the blue, navy and yellow squares, and the
+  classic icon. The squircles, the envelopes and the birds are gone. A
+  squircle that was chosen becomes the square of the same color, and any
+  other retired choice becomes the default.
+- **Changed: GitHub release pages show each paragraph as one line** (#277).
+  The notes are wrapped in the repository, and GitHub kept every one of
+  those line breaks. An @ on a release page now links only people whose work
+  is in the release; anyone else the notes mention is named without one.
+- **New: Settings > Privacy > Warn when the addressing doesn't match.**
+  Turned off, a message marked "Check this sender" (its replies go to
+  another domain, or its sender's name claims a domain the address is not
+  on) no longer gets the red banner across the top. The badge beside the
+  sender still shows the verdict, and a possible forgery keeps the banner
+  whatever the switch says. On by default; stored as `show_spoof_banner`
+  in `privacy.toml`. The banner's sentence for an addressing mismatch was
+  also never sent for translation, and now is.
+- **Fixed: the tray icon was published three times at every startup**
+  (#275, reported by mfreeman72). Settings is built hidden a moment after
+  startup so that it opens at once, and setting its rows to the saved
+  values fired the same signals a change by hand does: the tray icon choice
+  was reported twice, the first time wrong, and the tray item was taken
+  down and published again for each, with the settings file written each
+  time. Cinnamon's status applet crashed on the churn. A row now reports
+  only a change made after the window is built.
+
 ## 1.41.2-beta.1 — 2026-09-23
 
 Catch-up release: the beta channel is brought level with stable 1.41.1. No

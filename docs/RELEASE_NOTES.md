@@ -2,6 +2,25 @@
 
 Hylki (formerly Vireo) is a clean, fast, GNOME-native email client built with Rust and libadwaita for Wayland desktops. Privacy-first: no telemetry, remote content blocked by default, and credentials kept in the system keyring.
 
+## What's new in 1.42.0-beta.1
+
+The first beta on the new schedule: betas now carry what is on main, and
+a stable release follows about once a week. This one previews 1.42.0.
+
+- **Hide the "Check this sender" banner:** a switch in Settings > Privacy.
+  The badge beside the sender still shows the verdict, and a possible
+  forgery always keeps its banner.
+- **Five app icons** (#277): the default, the blue, navy and yellow
+  squares, and Classic. A squircle you had chosen becomes the square of
+  the same color.
+- **Accounts marked by protocol:** accounts without a provider logo show
+  an IMAP, POP3 or OAuth tile in Settings > Mail Accounts.
+- **JMAP through Stalwart only:** the Incoming Protocol choice lists IMAP
+  and POP3; Stalwart (JMAP) in the Provider list is how a JMAP account is
+  added. Custom (OAuth) moves up under IMAP/POP3 Account.
+- **Custom OAuth from the welcome wizard:** picking it opens Settings on a
+  new OAuth account when the wizard finishes.
+
 ## What's new in 1.41.2-beta.1
 
 Catch-up release: the beta channel is level with stable 1.41.1. Everything below applies.

@@ -673,6 +673,9 @@ pub struct AppModel {
     /// Whether the blocked-remote-content banner is shown at all. Hiding it changes nothing about what
     /// is blocked — only whether the reader says so.
     show_remote_banner: bool,
+    /// Whether a "Check this sender" verdict gets the red banner over the
+    /// message. A failed check gets it regardless.
+    show_spoof_banner: bool,
     /// Addresses/domains whose incoming inbox mail is auto-deleted (lowercased).
     blacklist: Vec<String>,
     /// Seconds the message-list actions palette stays open after the cursor leaves.
@@ -1243,6 +1246,7 @@ pub enum AppMsg {
     MarkSpam,
     SetAutoRemoteContent(bool),
     SetShowRemoteBanner(bool),
+    SetShowSpoofBanner(bool),
     /// The reader pane crossed the actions breakpoint (true = collapse the
     /// header's buttons into the overflow menu).
     SetReaderActionsCollapsed(bool),
@@ -1569,6 +1573,9 @@ pub enum AppMsg {
     OpenAccounts,
     /// Open the accounts window straight to the "add account" form (empty state).
     AddFirstAccount,
+    /// The welcome wizard handed Custom (OAuth) over: a new account in
+    /// Settings with that provider picked.
+    AddCustomOAuthAccount,
     AccountSaved { original_email: Option<String>, account: Box<AccountConfig> },
     /// Show the keyring / Secret Service setup help. `problem: true` when a save
     /// actually failed to persist; `false` for the proactive one-time tip.
@@ -3140,6 +3147,7 @@ impl SimpleComponent for AppModel {
             invite_answers: config::load_invite_answers(),
             auto_remote_content: config::load_auto_remote_content(),
             show_remote_banner: config::load_show_remote_banner(),
+            show_spoof_banner: config::load_show_spoof_banner(),
             blacklist: config::load_blacklist(),
             palette_collapse_secs: config::load_palette_collapse(),
             card_palette_collapse_secs: config::load_card_palette_collapse(),
@@ -6828,6 +6836,17 @@ impl SimpleComponent for AppModel {
                 }
             }
 
+            AppMsg::SetShowSpoofBanner(on) => {
+                if self.show_spoof_banner != on {
+                    self.show_spoof_banner = on;
+                    self.save_settings();
+                    self.message_view.emit(MessageViewInput::SetSpoofBannerShown(on));
+                    for p in self.popouts.values() {
+                        p.controller.emit(MessageWindowInput::SetSpoofBannerShown(on));
+                    }
+                }
+            }
+
             AppMsg::SetAutoRemoteContent(on) => {
                 if self.auto_remote_content != on {
                     self.auto_remote_content = on;
@@ -8304,6 +8323,12 @@ impl SimpleComponent for AppModel {
             AppMsg::OpenAccounts => self.open_settings_window(&sender, true, false),
 
             AppMsg::AddFirstAccount => self.open_settings_window(&sender, true, true),
+            AppMsg::AddCustomOAuthAccount => {
+                self.open_settings_window(&sender, true, false);
+                if let Some(a) = &self.accounts_win {
+                    a.emit(crate::ui::accounts::AccountsInput::AddCustomOAuthAccount);
+                }
+            }
 
             AppMsg::AccountSaved { original_email, account } => {
                 // Whether the account joined or left the unified section
@@ -10556,6 +10581,7 @@ impl AppModel {
             self.tray_mail,
             self.launcher_count,
             self.show_remote_banner,
+            self.show_spoof_banner,
             self.sidebar_hover_expand,
             self.remember_sidebar,
             self.remember_rail,
@@ -11866,6 +11892,7 @@ impl AppModel {
                 WelcomeOutput::Prefs(p) => AppMsg::ApplyWelcomePrefs(p),
                 WelcomeOutput::Done => AppMsg::PresentWindow,
                 WelcomeOutput::Language(code) => AppMsg::WizardLanguage(code),
+                WelcomeOutput::SetUpCustomOAuth => AppMsg::AddCustomOAuthAccount,
             });
         welcome.widget().set_transient_for(Some(&self.window));
         welcome.widget().set_modal(true);
@@ -16798,6 +16825,7 @@ impl AppModel {
         let init = PrefInit {
             auto_remote_content: self.auto_remote_content,
             show_remote_banner: self.show_remote_banner,
+            show_spoof_banner: self.show_spoof_banner,
             gravatar: self.gravatar,
             avatars: self.avatars,
             own_mailbox_face: self.own_mailbox_face,
@@ -16911,6 +16939,7 @@ impl AppModel {
             .forward(sender.input_sender(), |out| match out {
                 PrefOutput::SetAutoRemoteContent(on) => AppMsg::SetAutoRemoteContent(on),
                 PrefOutput::SetShowRemoteBanner(on) => AppMsg::SetShowRemoteBanner(on),
+                PrefOutput::SetShowSpoofBanner(on) => AppMsg::SetShowSpoofBanner(on),
                 PrefOutput::SetGravatar(on) => AppMsg::SetGravatar(on),
                 PrefOutput::SetAvatars(on) => AppMsg::SetAvatars(on),
                 PrefOutput::SetOwnMailboxFace(on) => AppMsg::SetOwnMailboxFace(on),
@@ -19675,7 +19704,7 @@ fn demo_account_configs_saved() -> Vec<AccountConfig> {
 }
 
 fn demo_account_configs() -> Vec<AccountConfig> {
-    let mk = |name: &str, email: &str, color: &str, emoji: &str| AccountConfig {
+    let mk = |name: &str, email: &str, color: &str, emoji: Option<&str>| AccountConfig {
         name: name.into(),
         email: email.into(),
         protocol: Default::default(),
@@ -19693,7 +19722,7 @@ fn demo_account_configs() -> Vec<AccountConfig> {
         smtp_username: String::new(),
         smtp_password: String::new(),
         color: Some(color.into()),
-        emoji: Some(emoji.into()),
+        emoji: emoji.map(Into::into),
         avatar: None,
         gravatar: false,
         signature: None,
@@ -19720,9 +19749,9 @@ fn demo_account_configs() -> Vec<AccountConfig> {
         sign_by_default: false,
     };
     vec![
-        mk("Jason M.", "jason@hylki.hyprlab.co", "#3584e4", "🚀"),
-        mk("Hyprlab", "hello@hyprlab.dev", "#2ec27e", "🦀"),
-        mk("Jason (Personal)", "jason.m@fastmail.com", "#9141ac", "🌿"),
+        mk("Jason M.", "jason@hylki.hyprlab.co", "#3584e4", Some("🚀")),
+        mk("Hyprlab", "hello@hyprlab.dev", "#f6d32d", None),
+        mk("Jason (Personal)", "jason.m@fastmail.com", "#f66151", Some("🌎")),
     ]
 }
 

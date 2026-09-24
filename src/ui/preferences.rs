@@ -15,6 +15,7 @@ use crate::i18n::{i18n, i18n_f, i18n_noop};
 pub struct PrefInit {
     pub auto_remote_content: bool,
     pub show_remote_banner: bool,
+    pub show_spoof_banner: bool,
     pub gravatar: bool,
     pub avatars: bool,
     /// Your own mail wears its mailbox's face, not a sender's circle (#189).
@@ -783,6 +784,7 @@ fn side_page(id: &str) -> Option<&'static SidePage> {
 #[derive(Debug)]
 pub enum PrefInput {
     ToggleShowRemoteBanner(bool),
+    ToggleShowSpoofBanner(bool),
     ToggleAutoRemoteContent(bool),
     ToggleGravatar(bool),
     ToggleAvatars(bool),
@@ -952,6 +954,7 @@ pub enum PrefOutput {
     PageShown(String),
     SetAutoRemoteContent(bool),
     SetShowRemoteBanner(bool),
+    SetShowSpoofBanner(bool),
     SetGravatar(bool),
     SetAvatars(bool),
     SetOwnMailboxFace(bool),
@@ -1475,6 +1478,34 @@ impl Preferences {
     /// on, and either this button is on already or there is room for it.
     fn button_row_sensitive(&self, button: crate::config::NotificationButton) -> bool {
         self.notifications && (self.notification_buttons.get(button) || !self.notification_buttons.full())
+    }
+}
+
+/// The `sender` the view's handlers report through. Setting a row's initial
+/// value fires the same signal a change by hand does: a combo row's model
+/// going in moves its selection to the first entry, and the saved value then
+/// moves it again. Built hidden a moment after startup (`AppMsg::PrewarmSettings`),
+/// the window so reported every choice twice, the first time wrong: the tray
+/// item was taken down and published again for each, which Cinnamon's status
+/// applet answered by crashing (#275). Nothing is reported until `ready` is
+/// set, at the end of `init`, once the saved values are in.
+#[derive(Clone)]
+struct ViewSender {
+    inner: ComponentSender<Preferences>,
+    ready: Rc<std::cell::Cell<bool>>,
+}
+
+impl ViewSender {
+    fn input(&self, msg: PrefInput) {
+        if self.ready.get() {
+            self.inner.input(msg);
+        } else {
+            tracing::debug!("settings window: {msg:?} while the rows are being set, not reported");
+        }
+    }
+
+    fn output(&self, msg: PrefOutput) -> Result<(), PrefOutput> {
+        self.inner.output(msg)
     }
 }
 
@@ -2819,6 +2850,19 @@ impl Component for Preferences {
                                         },
                                     },
 
+                                    #[name = "show_spoof_banner_row"]
+                                    adw::SwitchRow {
+                                        set_title: &i18n("Warn when the addressing doesn't match"),
+                                        set_subtitle: &i18n("Shows the red banner over a message marked \
+                                                       \"Check this sender\", such as one whose replies go \
+                                                       to another domain. The badge beside the sender still \
+                                                       marks it, and a possible forgery always shows the \
+                                                       banner."),
+                                        connect_active_notify[sender] => move |row| {
+                                            sender.input(PrefInput::ToggleShowSpoofBanner(row.is_active()));
+                                        },
+                                    },
+
                                     #[name = "gravatar_row"]
                                     adw::SwitchRow {
                                         set_title: &i18n("Use Gravatar when a contact has no photo"),
@@ -3198,7 +3242,16 @@ impl Component for Preferences {
             editor_page: "accounts",
         };
 
+        // The view's handlers report through `ViewSender`, silent until the
+        // rows below hold their saved values.
+        let component_sender = sender;
+        let sender = ViewSender {
+            inner: component_sender.clone(),
+            ready: Rc::new(std::cell::Cell::new(false)),
+        };
         let widgets = view_output!();
+        let ready = sender.ready.clone();
+        let sender = component_sender;
         tracing::debug!("settings window: preferences view built in {:?}", t_init.elapsed());
 
         // Settings never truncates. AdwComboRow's DEFAULT item factory builds
@@ -3259,6 +3312,7 @@ impl Component for Preferences {
 
         widgets.auto_remote_content_row.set_active(init.auto_remote_content);
         widgets.show_remote_banner_row.set_active(init.show_remote_banner);
+        widgets.show_spoof_banner_row.set_active(init.show_spoof_banner);
         widgets.gravatar_row.set_active(init.gravatar);
         widgets.avatars_row.set_active(init.avatars);
         widgets.own_mailbox_face_row.set_active(init.own_mailbox_face);
@@ -3930,6 +3984,8 @@ impl Component for Preferences {
         model.host_header = Some(widgets.host_header.clone());
 
         tracing::debug!("settings window: preferences init {:?}", t_init.elapsed());
+        // From here on a row's signal is the user's doing.
+        ready.set(true);
         ComponentParts { model, widgets }
     }
 
@@ -4506,6 +4562,9 @@ impl Component for Preferences {
             }
             PrefInput::ToggleShowRemoteBanner(on) => {
                 let _ = sender.output(PrefOutput::SetShowRemoteBanner(on));
+            }
+            PrefInput::ToggleShowSpoofBanner(on) => {
+                let _ = sender.output(PrefOutput::SetShowSpoofBanner(on));
             }
             PrefInput::ToggleOverrideFonts(on) => {
                 let _ = sender.output(PrefOutput::SetOverrideFonts(on));
