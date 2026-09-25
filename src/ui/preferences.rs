@@ -86,6 +86,7 @@ pub struct PrefInit {
     /// folder's account. One of `identities`' addresses.
     pub compose_default_from: String,
     pub paste_plain: bool,
+    pub return_paragraph: bool,
     pub spellcheck: bool,
     pub spellcheck_langs: String,
     pub message_theme: MessageTheme,
@@ -299,6 +300,10 @@ pub struct Preferences {
     /// The notification buttons, kept whole so each switch can hand the
     /// app the full set (#244).
     notification_buttons: crate::config::NotificationButtons,
+    /// The new-mail sound (#292): on or off, and which one.
+    sound: crate::config::NewMailSound,
+    /// The custom sound file, a copy in the data directory.
+    custom_sound: Option<std::path::PathBuf>,
     show_unified: bool,
     /// The unified Starred / Sent / Drafts switches, kept whole so each
     /// toggle can hand the app the full set.
@@ -836,6 +841,7 @@ pub enum PrefInput {
     /// then `identities` in order.
     ChangeComposeDefaultFrom(u32),
     TogglePastePlain(bool),
+    ToggleReturnParagraph(bool),
     ToggleSpellcheck(bool),
     SpellLangsEdited(String),
     ChangeFetchInterval(u32),
@@ -843,6 +849,13 @@ pub enum PrefInput {
     ToggleNotifications(bool),
     ToggleNotificationContent(bool),
     ToggleNotificationButton(crate::config::NotificationButton, bool),
+    /// The new-mail sound (#292): on or off, which one (an index into the
+    /// built-ins, then Custom File), pick a file, it was picked, hear it.
+    ToggleSound(bool),
+    ChangeSound(u32),
+    ChooseSound,
+    SoundChosen(std::path::PathBuf),
+    PlaySound,
     ToggleAttachmentsRow(bool),
     ToggleContactsRow(bool),
     ToggleShowUnified(bool),
@@ -991,6 +1004,7 @@ pub enum PrefOutput {
     SetLinkBrowser(String),
     SetComposeDefaultFrom(String),
     SetPastePlain(bool),
+    SetReturnParagraph(bool),
     SetSpellcheck(bool),
     SetSpellcheckLangs(String),
     SetFetchInterval(u64),
@@ -1658,6 +1672,59 @@ impl Component for Preferences {
                                         set_title: &i18n("Show sender and subject"),
                                         connect_active_notify[sender] => move |row| {
                                             sender.input(PrefInput::ToggleNotificationContent(row.is_active()));
+                                        },
+                                    },
+
+                                    // A sound with each new-mail notification
+                                    // (#292): a built-in one or a file of the
+                                    // user's own.
+                                    #[name = "sound_row"]
+                                    adw::SwitchRow {
+                                        #[watch]
+                                        set_sensitive: model.notifications,
+                                        set_title: &i18n("Sound for new mail"),
+                                        connect_active_notify[sender] => move |row| {
+                                            sender.input(PrefInput::ToggleSound(row.is_active()));
+                                        },
+                                    },
+
+                                    #[name = "sound_choice_row"]
+                                    adw::ComboRow {
+                                        #[watch]
+                                        set_sensitive: model.notifications && model.sound.enabled,
+                                        set_title: &i18n("Sound"),
+                                        add_suffix = &gtk::Button {
+                                            set_icon_name: "media-playback-start-symbolic",
+                                            set_tooltip_text: Some(i18n("Play").as_str()),
+                                            set_valign: gtk::Align::Center,
+                                            add_css_class: "flat",
+                                            connect_clicked[sender] => move |_| {
+                                                sender.input(PrefInput::PlaySound);
+                                            },
+                                        },
+                                        connect_selected_notify[sender] => move |row| {
+                                            sender.input(PrefInput::ChangeSound(row.selected()));
+                                        },
+                                    },
+
+                                    adw::ActionRow {
+                                        #[watch]
+                                        set_visible: model.sound.sound == crate::config::CUSTOM_SOUND,
+                                        #[watch]
+                                        set_sensitive: model.notifications && model.sound.enabled,
+                                        set_title: &i18n("Sound file"),
+                                        #[watch]
+                                        set_subtitle: &model
+                                            .custom_sound
+                                            .as_ref()
+                                            .and_then(|p| p.file_name())
+                                            .map_or_else(|| i18n("None"), |n| n.to_string_lossy().into_owned()),
+                                        add_suffix = &gtk::Button {
+                                            set_label: &i18n("Choose…"),
+                                            set_valign: gtk::Align::Center,
+                                            connect_clicked[sender] => move |_| {
+                                                sender.input(PrefInput::ChooseSound);
+                                            },
                                         },
                                     },
 
@@ -2753,6 +2820,19 @@ impl Component for Preferences {
                                         },
                                     },
 
+                                    #[name = "return_paragraph_row"]
+                                    adw::SwitchRow {
+                                        set_title: &i18n("Return starts a new paragraph"),
+                                        set_subtitle: &i18n("Return ends the paragraph with a hard \
+                                                       return and leaves space before the next. \
+                                                       Off, Return starts a new line in the same \
+                                                       paragraph. Shift+Return always does the \
+                                                       other."),
+                                        connect_active_notify[sender] => move |row| {
+                                            sender.input(PrefInput::ToggleReturnParagraph(row.is_active()));
+                                        },
+                                    },
+
                                     #[name = "compose_format_row"]
                                     adw::ComboRow {
                                         set_title: &i18n("Write messages in"),
@@ -3212,6 +3292,8 @@ impl Component for Preferences {
             browsers: crate::ui::launch::browsers(),
             notifications: init.notifications,
             notification_buttons: init.notification_buttons,
+            sound: crate::config::load_new_mail_sound(),
+            custom_sound: crate::config::custom_sound(),
             toolbar: init.reader_toolbar.clone(),
             focus: init.focus,
             toolbar_editor: None,
@@ -3330,6 +3412,13 @@ impl Component for Preferences {
         widgets.push_row.set_active(init.push);
         widgets.notifications_row.set_active(init.notifications);
         widgets.notification_content_row.set_active(init.notification_content);
+        // Set before the handlers can act on it: the model already holds
+        // these values, so the echo is ignored rather than played.
+        widgets.sound_row.set_active(model.sound.enabled);
+        let labels_owned: Vec<String> = sound_labels();
+        let labels: Vec<&str> = labels_owned.iter().map(String::as_str).collect();
+        widgets.sound_choice_row.set_model(Some(&gtk::StringList::new(&labels)));
+        widgets.sound_choice_row.set_selected(sound_index(&model.sound.sound));
         widgets.notify_mark_read_row.set_active(init.notification_buttons.mark_read);
         widgets.notify_archive_row.set_active(init.notification_buttons.archive);
         widgets.notify_delete_row.set_active(init.notification_buttons.delete);
@@ -3628,6 +3717,7 @@ impl Component for Preferences {
             middle_ellipsize(&widgets.default_from_row);
         }
         widgets.paste_plain_row.set_active(init.paste_plain);
+        widgets.return_paragraph_row.set_active(init.return_paragraph);
         widgets.compose_format_row.set_model(Some(&gtk::StringList::new(&[
             &i18n("Rich text"),
             &i18n("Markdown"),
@@ -4198,6 +4288,9 @@ impl Component for Preferences {
             PrefInput::TogglePastePlain(on) => {
                 let _ = sender.output(PrefOutput::SetPastePlain(on));
             }
+            PrefInput::ToggleReturnParagraph(on) => {
+                let _ = sender.output(PrefOutput::SetReturnParagraph(on));
+            }
             PrefInput::ToggleSpellcheck(on) => {
                 let _ = sender.output(PrefOutput::SetSpellcheck(on));
             }
@@ -4229,6 +4322,57 @@ impl Component for Preferences {
                 }
                 self.notification_buttons.set(button, on);
                 let _ = sender.output(PrefOutput::SetNotificationButtons(self.notification_buttons));
+            }
+            PrefInput::ChooseSound => {
+                let dialog = gtk::FileDialog::builder().title(&i18n("Choose a Sound")).build();
+                let filter = gtk::FileFilter::new();
+                filter.set_name(Some(&i18n("Sounds")));
+                filter.add_mime_type("audio/*");
+                let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
+                filters.append(&filter);
+                dialog.set_filters(Some(&filters));
+                dialog.set_default_filter(Some(&filter));
+                let s = sender.clone();
+                dialog.open(Some(root), gtk::gio::Cancellable::NONE, move |res| {
+                    let Ok(file) = res else { return };
+                    let Some(path) = file.path() else { return };
+                    s.input(PrefInput::SoundChosen(path));
+                });
+            }
+            PrefInput::SoundChosen(path) => match crate::config::set_custom_sound(&path) {
+                Ok(copy) => {
+                    crate::notify::play_sound(&crate::config::SoundSource::File(copy.clone()), true);
+                    self.custom_sound = Some(copy);
+                }
+                Err(e) => tracing::warn!("could not keep {} as the new-mail sound: {e}", path.display()),
+            },
+            PrefInput::PlaySound => {
+                if let Some(source) = self.sound.source() {
+                    crate::notify::play_sound(&source, true);
+                }
+            }
+            PrefInput::ToggleSound(on) => {
+                if self.sound.enabled != on {
+                    self.sound.enabled = on;
+                    crate::config::save_new_mail_sound(&self.sound);
+                }
+            }
+            PrefInput::ChangeSound(index) => {
+                let name = crate::config::BUILTIN_SOUNDS
+                    .get(index as usize)
+                    .copied()
+                    .unwrap_or(crate::config::CUSTOM_SOUND);
+                if self.sound.sound == name {
+                    return;
+                }
+                self.sound.sound = name.to_string();
+                crate::config::save_new_mail_sound(&self.sound);
+                // Picking a sound plays it; Custom File with no file yet
+                // goes straight to the file chooser.
+                match self.sound.source() {
+                    Some(source) => crate::notify::play_sound(&source, true),
+                    None => sender.input(PrefInput::ChooseSound),
+                }
             }
             PrefInput::ToggleAttachmentsRow(on) => {
                 let _ = sender.output(PrefOutput::SetAttachmentsRow(on));
@@ -4754,4 +4898,20 @@ fn widen_combo_value(row: &adw::ComboRow, extra: i32) {
         let (_, natural, _, _) = label.measure(gtk::Orientation::Horizontal, -1);
         label.set_width_request(natural + extra);
     }
+}
+
+/// The new-mail sound choices, in `BUILTIN_SOUNDS` order, then Custom File.
+fn sound_labels() -> Vec<String> {
+    // GNOME Settings' own names for its alert sounds.
+    let mut labels = vec![i18n("Click"), i18n("Hum"), i18n("String"), i18n("Swing")];
+    labels.push(i18n("Custom File"));
+    labels
+}
+
+/// The row of `sound_labels` naming a saved `sound` value.
+fn sound_index(sound: &str) -> u32 {
+    crate::config::BUILTIN_SOUNDS
+        .iter()
+        .position(|n| *n == sound)
+        .unwrap_or(if sound == crate::config::CUSTOM_SOUND { crate::config::BUILTIN_SOUNDS.len() } else { 0 }) as u32
 }

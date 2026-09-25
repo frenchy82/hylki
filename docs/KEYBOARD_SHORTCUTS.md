@@ -23,13 +23,19 @@ this list in the app; the same key closes it again.
 | | | <kbd>0</kbd> | Remove every tag |
 
 <kbd>Esc</kbd> backs out of a reply, forward or compose and returns you to the
-message list. It works whether or not single-key shortcuts are enabled, as
-does everything in the menus, and in a search field it still clears the
-search.
+message list. Once something has been written, it asks first whether to save
+the message to Drafts, discard it or keep editing, as the Cancel button and
+the composer window's close button do; <kbd>Esc</kbd> again keeps editing.
+It works whether or not single-key shortcuts are enabled, as does everything
+in the menus, and in a search field it still clears the search.
 
 <kbd>Ctrl+Enter</kbd> sends the message you are writing, from the body or
 any of its address rows. It does what the Send button does, so a message with
 no recipient is not sent, and one scheduled for later is queued.
+
+In the body, <kbd>Return</kbd> starts a new line and <kbd>Shift+Return</kbd>
+a new paragraph; **Settings → Composing → Return starts a new paragraph**
+swaps them. See [Return and Shift+Return](DOCUMENTATION.md#return-and-shiftreturn).
 
 <kbd>Ctrl+Shift+F</kbd> turns [Focus Mode](FEATURES.md#the-app) on and off,
 with or without single-key shortcuts.

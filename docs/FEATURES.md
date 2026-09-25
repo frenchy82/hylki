@@ -47,6 +47,8 @@ The full list. The [README](../README.md) carries a shorter one.
 - **Attachment gallery:** every attachment in an account or folder in one
   place, with PDF first-page thumbnails, scoped by account and folder, and a
   deep archive scan that finds old attachments without downloading them.
+- **Delete an attachment from the server:** take a large file out of a
+  message and keep the rest of it, on IMAP, JMAP and Microsoft 365.
 - **Printing:** a message with its sender, recipients and date, with an
   in-app preview that also saves straight to PDF.
 - **Outbox:** a send that fails is kept and retried when the connection
@@ -78,6 +80,9 @@ The full list. The [README](../README.md) carries a shorter one.
   ownCloud, OpenCloud or Seafile server, or to OneDrive or Dropbox, and put a
   share link in the message, with an optional expiry and download password.
   See [Cloud attachments](DOCUMENTATION.md#cloud-attachments-nextcloud-onedrive-dropbox-seafile).
+- **Drag files in:** dragged over the composer, files can be attached, put
+  in the text or uploaded to cloud storage; dragged over the window, they
+  start a new message in any of those three ways.
 - **Send from Files:** a *Send with Hylki* entry in the GNOME Files
   right-click menu sends the selected files into a new message, a draft or a
   reply of your choosing, with an offer to upload big ones to cloud storage
@@ -131,7 +136,7 @@ The full list. The [README](../README.md) carries a shorter one.
   you choose.
 - **Notifications** that open the message they are about, with up to three
   buttons of your choice: Mark as Read, Archive, Delete, Reply, Forward or
-  Mark as Spam.
+  Mark as Spam, and a sound if you want one: built in, or a file of your own.
 - **GNOME Contacts:** names and photos from your address book, optional.
 - **Your language:** the desktop's, or one you pick; a 12- or 24-hour clock
   following the desktop setting.

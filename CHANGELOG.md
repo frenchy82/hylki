@@ -5,14 +5,82 @@
 The first beta on the new schedule (#277): betas carry what is on main,
 and a stable 1.x.0 follows about once a week. This one previews 1.42.0.
 
+- **New: a choice of what Return does in the composer.** In rich text,
+  Return starts a new line in the same paragraph and Shift+Return starts a
+  new paragraph, sent as a `<p>` with space before the next one. **Settings
+  → Composing → Return starts a new paragraph** swaps them. Before, Return
+  made a new block that looked like a line in the message but became a
+  paragraph in its plain-text copy, and Shift+Return made a line. Lists and
+  the two-Return exit from a quote are unchanged. See
+  [Return and Shift+Return](docs/DOCUMENTATION.md#return-and-shiftreturn).
+- **New: a sound for new mail** (#292, suggested by yioannides).
+  **Settings → General → Sound for new mail** switches it on, and **Sound**
+  picks one of GNOME's four alert sounds (Click, Hum, String, Swing), which
+  Hylki now carries, or a file of your own (WAV, MP3, OGG, FLAC or anything
+  else GStreamer plays), of which Hylki keeps a copy. Picking a sound plays
+  it. It is off by default, and plays once for a burst of mail from several
+  accounts. It stays quiet when GNOME's event sounds are off, and during Do
+  Not Disturb in a native install; the Flatpak cannot read Do Not Disturb.
+  The Flatpak gains `--socket=pulseaudio` to play it. See
+  [Notifications](docs/DOCUMENTATION.md#notifications).
+- **New: files dragged onto the window go into a message** (#293). Dragged
+  over a composer, the files bring up a card for each place they can go:
+  **Attach**, **Insert in Text** (when a picture is among them and the
+  message is rich text; other files are attached) and **Upload to Cloud**
+  (when a cloud storage account is set up, opening the upload dialog). The
+  card under the pointer fills with the accent color. Dragged over the main
+  window with no composer open, they bring up the same cards side by side,
+  each starting a new message: **Attach to New Message** (with the same
+  large-file question as *Send with Hylki*), **Insert in New Message** and
+  **Share Link in New Message**. With a composer open, files dropped
+  elsewhere in the window go into it. Before, only the text area of the
+  composer took files. See
+  [Dragging files into a message](docs/DOCUMENTATION.md#dragging-files-into-a-message).
+- **New: Delete from Server… removes one attachment from a message** (#289,
+  suggested by yioannides). It is in the right-click menu of a file in the
+  attachment drawer and in the attachment gallery, and asks first. The file
+  shows pale red with "Deleting…" until the server answers, then fades out,
+  in the grid and list views of both. On IMAP
+  and JMAP the message is stored again without the file, keeping its folder,
+  flags, keywords and date, and the original is deleted; the file's place
+  holds a note in Thunderbird's `text/x-moz-deleted` format, which Hylki does
+  not list as an attachment. Microsoft 365 deletes the attachment in place.
+  Refused on Gmail (All Mail would keep the original), POP3, signed or
+  encrypted messages, and a message that is only the file. See
+  [Deleting an attachment from the server](docs/DOCUMENTATION.md#deleting-an-attachment-from-the-server).
+- **Fixed: the menu offered to reveal a status bar already showing** (#294,
+  reported by frenchy82). The menu item reads *Hide Status Bar* while the
+  bar is down, an error message passing through it included, and hides it.
+  Before, choosing it with only a passing message showing held the bar open.
+- **Fixed: Escape discarded a message being written without asking** (#290,
+  reported by EmmanuelP). Escape, Cancel and the composer window's close
+  button now ask whether to save the message to Drafts, discard it or keep
+  editing, once anything has been written or attached. An untouched reply
+  still closes at once. Escape in the question answers Keep Editing.
+- **Fixed: Unsubscribe said "Unsubscribed" when the list had done nothing**
+  (#284, reported by Nonchalantcz). A one-click request the list answered
+  with a redirect was followed as a GET, whose landing page answered 200.
+  Only a direct 2xx answer to the POST now counts; anything else falls back
+  to the mail route or, failing that, opens the list's page in the browser.
+  Mail from a list dated more than two days after you unsubscribed now says
+  the list is still sending, instead of labelling it as from a list you left.
+- **Translations:** French (PR #281 by frenchy82), Spanish (PR #287 by
+  Daniel Miguel), Portuguese and Brazilian Portuguese (PR #280 by Paulo
+  Fino) and Greek (PR #291 by Yiannis Ioannides) brought up to date.
 - **Changed: JMAP is set up through the Stalwart (JMAP) provider only.**
   The Incoming Protocol row of an IMAP/POP3 account offers IMAP and POP3,
   and is hidden for Stalwart, whose protocol is always JMAP. Accounts
   already on JMAP open under Stalwart as before. Custom (OAuth) moves up
-  the Provider list to sit under IMAP/POP3 Account, and the welcome
-  wizard lists it too: choosing it there opens Settings on a new OAuth
-  account when the wizard finishes, since its sign-in details are only
-  in the account editor.
+  the Provider list to sit under IMAP/POP3 Account.
+- **Changed: the welcome wizard imports from GNOME Online Accounts on a page
+  of its own.** The first account page lists the mail accounts in GNOME
+  Settings → Online Accounts, Google and Microsoft included, and can be
+  skipped. The next page adds an account by hand: its Provider list leaves
+  out Google and Microsoft, and Custom (OAuth) takes the client and
+  endpoint fields the account editor has, signs in through the browser and
+  adds the account; its title reads "Add another email account" after an
+  import. Either page's button reads Skip until something is added or, on
+  the second, typed. The last page's button reads Finish.
 - **Changed: Mail Accounts marks an account with no provider logo by how it
   connects** (#277): a blue IMAP, red POP3 or yellow OAuth tile in place
   of the blue and yellow envelopes, in the account list, the Provider
@@ -42,6 +110,14 @@ and a stable 1.x.0 follows about once a week. This one previews 1.42.0.
   down and published again for each, with the settings file written each
   time. Cinnamon's status applet crashed on the churn. A row now reports
   only a change made after the window is built.
+- **Fixed: some icons showed as a broken image on KDE and other desktops**
+  (#278). Since 1.41.0 the icon theme draws Hylki's icons, and inside the
+  Flatpak a theme can list a file the sandbox cannot open, typically a
+  symlink into the host's `/usr/share/icons`. GTK drew its placeholder for
+  those and never fell back to the bundled copy. Hylki now looks up each
+  icon it carries in the theme once the window is up, and again when the
+  theme changes, and swaps in its own copy for every file that cannot be
+  read, leaving the rest of the theme in place.
 
 ## 1.41.2-beta.1 — 2026-09-23
 
@@ -587,8 +663,8 @@ and the repository itself rebuilt around #230.
   180-line budget, a `docs/*.md` missing from the index or linked from nowhere,
   artwork under `docs/`, unexpected top-level Markdown, a "Vireo" outside the
   changelog, and a CONTRIBUTORS or TRANSLATORS line About would silently drop.
-  Where each kind of writing goes is a placement table in the new `CLAUDE.md`
-  and in `docs/CONTRIBUTING.md`, and the check is a step before a tag.
+  Where each kind of writing goes is a placement table in
+  `docs/CONTRIBUTING.md`, and the check is a step before a tag.
 - `HYLKI_SHOWCASE_SCROLL` now scrolls the About window too, and
   `HYLKI_SHOWCASE_PEEK` takes a list of seconds (`=7,10`), working the sidebar
   toggle at each — how the borrowed-layout paths were checked without input

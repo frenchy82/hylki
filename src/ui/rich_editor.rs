@@ -33,6 +33,10 @@ pub struct RichEditor {
     /// temp-file path the host adds to its attachment list. Set by the host
     /// via [`RichEditor::connect_send_as_attachment`].
     attach_cb: std::rc::Rc<std::cell::RefCell<Option<Box<dyn Fn(std::path::PathBuf)>>>>,
+    /// Whether the document is there to take files, and the ones waiting
+    /// for it ([`RichEditor::insert_files`]).
+    loaded: std::rc::Rc<std::cell::Cell<bool>>,
+    pending_files: std::rc::Rc<std::cell::RefCell<Vec<std::path::PathBuf>>>,
     /// What the document's own text history can do right now, mirrored from
     /// WebKit's editor state so a host can read it without a round trip
     /// (#200 in the composer). `(undo, redo)`.
@@ -321,6 +325,27 @@ impl RichEditor {
         // the exact node the right-click landed on (`__hylkiCtxImg`).
         let attach_cb: std::rc::Rc<std::cell::RefCell<Option<Box<dyn Fn(std::path::PathBuf)>>>> =
             std::rc::Rc::new(std::cell::RefCell::new(None));
+        // Files to put in the text that arrived before the document did (a
+        // message started from files dropped on the main window): they go
+        // in once it has loaded, and not into the document being replaced.
+        let loaded = std::rc::Rc::new(std::cell::Cell::new(false));
+        let pending_files: std::rc::Rc<std::cell::RefCell<Vec<std::path::PathBuf>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(Vec::new()));
+        {
+            let (loaded, pending, cb) = (loaded.clone(), pending_files.clone(), attach_cb.clone());
+            webview.connect_load_changed(move |v, ev| match ev {
+                webkit6::LoadEvent::Started => loaded.set(false),
+                webkit6::LoadEvent::Finished => {
+                    loaded.set(true);
+                    let paths = std::mem::take(&mut *pending.borrow_mut());
+                    if !paths.is_empty() {
+                        let files: Vec<_> = paths.iter().map(gtk::gio::File::for_path).collect();
+                        deliver_files(v, &files, None, &cb);
+                    }
+                }
+                _ => {}
+            });
+        }
         // Rich to begin with; [`RichEditor::set_source`] moves it.
         let source: std::rc::Rc<std::cell::Cell<Option<SourceKind>>> =
             std::rc::Rc::new(std::cell::Cell::new(None));
@@ -532,6 +557,8 @@ impl RichEditor {
             preview: std::rc::Rc::new(std::cell::RefCell::new(None)),
             source: source.clone(),
             attach_cb,
+            loaded,
+            pending_files,
             text_history,
             history_cb,
             _theme_handler: std::rc::Rc::new(ThemeHandlerGuard(Some(theme_handler))),
@@ -678,6 +705,18 @@ impl RichEditor {
     /// Paste the clipboard into the editor, keeping (`rich`) or stripping the
     /// clipboard's formatting for this one paste, whatever the standing
     /// preference says.
+    /// Put the pictures among `paths` in the text at the caret, and hand
+    /// the rest to the attachment list, as a drop on the text does. Before
+    /// the document has loaded they wait for it.
+    pub fn insert_files(&self, paths: &[std::path::PathBuf]) {
+        if !self.loaded.get() {
+            self.pending_files.borrow_mut().extend(paths.iter().cloned());
+            return;
+        }
+        let files: Vec<_> = paths.iter().map(gtk::gio::File::for_path).collect();
+        deliver_files(&self.webview, &files, None, &self.attach_cb);
+    }
+
     pub fn paste(&self, rich: bool) {
         paste_into(&self.webview, rich, &self.attach_cb);
     }
@@ -1003,6 +1042,13 @@ fn read_image_for_insert(
     file: &gtk::gio::File,
     path: &std::path::Path,
 ) -> Option<(String, String)> {
+    let mime = inline_mime(file)?;
+    let data = std::fs::read(path).ok()?;
+    Some((crate::oauth::base64_encode(&data), mime))
+}
+
+/// The MIME type of a picture that can go in the text, or `None`.
+fn inline_mime(file: &gtk::gio::File) -> Option<String> {
     const MAX_INLINE_BYTES: u64 = 32 * 1024 * 1024;
     let info = file
         .query_info(
@@ -1026,11 +1072,13 @@ fn read_image_for_insert(
         "image/svg+xml",
         "image/avif",
     ];
-    if !INLINE_MIMES.contains(&mime.as_str()) || info.size() as u64 > MAX_INLINE_BYTES {
-        return None;
-    }
-    let data = std::fs::read(path).ok()?;
-    Some((crate::oauth::base64_encode(&data), mime))
+    (INLINE_MIMES.contains(&mime.as_str()) && info.size() as u64 <= MAX_INLINE_BYTES).then_some(mime)
+}
+
+/// Whether the file is a picture the editor would place in the text rather
+/// than attach: what the composer's drop surfaces offer "Insert in Text" for.
+pub fn is_inline_image(path: &std::path::Path) -> bool {
+    inline_mime(&gtk::gio::File::for_path(path)).is_some()
 }
 
 /// The format bar, plus the block-kind toggles keyed the way `fmtState` in
@@ -1265,6 +1313,16 @@ const PASTE_SCRIPT: &str = r#"<script>
           var r = document.caretRangeFromPoint(x, y);
           if(r){ var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
         }
+        /* No drop point and no caret in the text (the composer's drop
+           surfaces, with the focus in the To row): the line written on
+           first, at the top, rather than nowhere. */
+        var cur = getSelection();
+        if(!cur.rangeCount || !document.body.contains(cur.anchorNode)){
+          var top = document.createRange();
+          top.setStart(document.body.firstChild || document.body, 0);
+          top.collapse(true);
+          cur.removeAllRanges(); cur.addRange(top);
+        }
         scaleUrl(url, type, function(u){
           /* The file's own name rides along as alt, which is the only place
              left to keep it: the picture is a data: URI by now, and the send
@@ -1374,28 +1432,56 @@ const PASTE_SCRIPT: &str = r#"<script>
     }
     fmtState();
   };
-  /* Enter twice inside a quote leaves it (#137), the way a list ends: the
+  /* Return breaks the line, or with `__hylkiReturnParagraph` set starts a
+     new paragraph, a <p> the recipient's client spaces as one; Shift+Return
+     does the other. WebKit's own pair is the reverse of the default, and
+     its paragraph is a copy of the block the caret is in, usually a
+     spaceless <div>. Inside a list Return keeps making the next item.
+
+     Enter twice inside a quote leaves it (#137), the way a list ends: the
      first Enter opens an empty line in the quote, the second takes that
      line out below it (WebKit's outdent drops one quote level for the
      caret's paragraph). Any other key in between makes the next Enter an
      ordinary one again. */
   var enterInQuote = false;
+  if(window.__hylkiReturnParagraph){
+    document.execCommand('defaultParagraphSeparator', false, 'p');
+  }
   document.addEventListener('keydown', function(e){
-    if(e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || composing){
+    if(e.key !== 'Enter' || e.ctrlKey || e.altKey || e.metaKey || composing){
       enterInQuote = false;
       return;
     }
     var sel = getSelection();
     var n = sel.rangeCount ? sel.anchorNode : null;
     var el = n && n.nodeType === 3 ? n.parentNode : n;
-    var inQuote = !!(el && el.closest && el.closest('blockquote'));
-    if(inQuote && enterInQuote && sel.isCollapsed){
+    if(!el || !el.closest || !document.body.isContentEditable || el.closest('li')){
+      enterInQuote = false;
+      return;
+    }
+    var inQuote = !!el.closest('blockquote');
+    if(!e.shiftKey && inQuote && enterInQuote && sel.isCollapsed){
       e.preventDefault();
       document.execCommand('outdent');
       enterInQuote = false;
       return;
     }
-    enterInQuote = inQuote;
+    enterInQuote = inQuote && !e.shiftKey;
+    e.preventDefault();
+    if(!window.__hylkiReturnParagraph === !e.shiftKey){
+      document.execCommand('insertLineBreak');
+      return;
+    }
+    document.execCommand('insertParagraph');
+    /* A paragraph split from a <div> is another <div>; it becomes a <p>
+       so it carries a paragraph's space. Only a bare div: one with a
+       class (the signature) or a style is somebody's markup. */
+    var m = getSelection().anchorNode;
+    var b = m && (m.nodeType === 3 ? m.parentNode : m);
+    b = b && b.closest && b.closest('p,div,li,blockquote,h1,h2,h3,h4,h5,h6,pre');
+    if(b && b.tagName === 'DIV' && !b.attributes.length){
+      document.execCommand('formatBlock', false, 'p');
+    }
   }, true);
   document.addEventListener('compositionstart', function(){ composing = true; });
   document.addEventListener('compositionend', function(){ composing = false; });
@@ -1726,8 +1812,10 @@ fn document(content: &str, webview: &webkit6::WebView) -> String {
     let scheme = if dark { "dark" } else { "light" };
     let (ground, _, _) = crate::ui::message_view::theme_grounds_for(webview, dark);
     let paste_rich = !crate::config::load_paste_plain();
+    let return_paragraph = crate::config::load_return_paragraph();
     let script = format!(
-        "<script>window.__hylkiPasteRich={paste_rich};</script>{PASTE_SCRIPT}{HISTORY_SCRIPT}"
+        "<script>window.__hylkiPasteRich={paste_rich};\
+         window.__hylkiReturnParagraph={return_paragraph};</script>{PASTE_SCRIPT}{HISTORY_SCRIPT}"
     );
     format!(
         "<!doctype html><html><head><meta charset=\"utf-8\">\
@@ -1751,6 +1839,9 @@ fn document(content: &str, webview: &webkit6::WebView) -> String {
              background-color:rgba(224,27,36,0.10);}}\
            blockquote{{margin:0 0 0 8px;padding-left:10px;\
              border-left:3px solid rgba(128,128,128,0.4);}}\
+           /* A paragraph's space goes below it, so the first line of the\
+              message sits where it would in a <div>. */\
+           body>p:first-child{{margin-top:0;}}\
            .vireo-quote-attr{{opacity:0.7;margin:10px 0 4px;}}\
            .vireo-sig{{opacity:0.85;}}\
            a{{color:#3584e4;}}\

@@ -36,8 +36,8 @@ use crate::config::{self, DrawerState};
 use crate::models::{is_image_name, Attachment};
 use crate::ui::context_menu::{show_context_menu, MenuEntry};
 use crate::ui::attachments_gallery::{
-    icon_color_class, icon_for, is_pdf_name, open_bytes, spawn_thumbnail_render, texture_from,
-    thumbnail_texture, Thumbnail,
+    deleting_label, deleting_over, deleting_veil, fade_out, icon_color_class, icon_for, is_pdf_name, open_bytes,
+    spawn_thumbnail_render, texture_from, thumbnail_texture, Thumbnail,
 };
 use crate::i18n::{i18n, ni18n_f};
 
@@ -127,6 +127,13 @@ pub struct AttachmentDrawer {
     /// Bumped whenever a slide is superseded, so a stale `ToggleSettled`
     /// from a skipped animation is recognised and ignored.
     toggle_gen: u64,
+    /// Files being deleted from the server (#289), by name and size: drawn
+    /// pale red with "Deleting…" until the server answers.
+    deleting: Vec<(String, usize)>,
+    /// Deleted files still fading out. A new list that arrives meanwhile
+    /// waits in `pending_items`, so a fade is never cut short by a rebuild.
+    fading: usize,
+    pending_items: Option<Vec<Attachment>>,
 }
 
 /// What the drawer asks the app to do.
@@ -137,6 +144,9 @@ pub enum DrawerOutput {
     ShowLightbox { items: Vec<Attachment>, start: usize },
     /// Scroll the reader to the message this attachment came with (#213).
     ShowInMessage(Attachment),
+    /// Take this attachment out of its message on the server (#289); the
+    /// app asks first.
+    DeleteFromServer(Attachment),
 }
 
 #[derive(Debug)]
@@ -163,6 +173,17 @@ pub enum AttachmentDrawerInput {
     Download(usize),
     /// Scroll the reader to the message the attachment belongs to (#213).
     ShowInMessage(usize),
+    /// Remove the attachment from its message on the server (#289).
+    DeleteFromServer(usize),
+    /// The app is deleting this file (name, size) from the server: show it
+    /// as being deleted.
+    MarkDeleting(String, usize),
+    /// The server refused: show the file as it was.
+    NotDeleted(String, usize),
+    /// The server deleted it: fade it out.
+    Deleted(String, usize),
+    /// A fade finished: take the file away.
+    FadeDone(String, usize),
     /// Save every attachment into a chosen folder ("Save All" header button).
     SaveAll,
     /// Right-click at (x, y) within the cell.
@@ -486,6 +507,9 @@ impl SimpleComponent for AttachmentDrawer {
             pill_dragged: false,
             toggle_anim: Rc::new(std::cell::RefCell::new(None)),
             toggle_gen: 0,
+            deleting: Vec::new(),
+            fading: 0,
+            pending_items: None,
         };
 
         let widgets = view_output!();
@@ -576,6 +600,9 @@ impl SimpleComponent for AttachmentDrawer {
 
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
+            AttachmentDrawerInput::SetItems(items) if self.fading > 0 => {
+                self.pending_items = Some(items);
+            }
             AttachmentDrawerInput::SetItems(items) => {
                 let became_visible = self.items.is_empty() && !items.is_empty();
                 self.items = items;
@@ -650,6 +677,50 @@ impl SimpleComponent for AttachmentDrawer {
             AttachmentDrawerInput::ShowInMessage(i) => {
                 if let Some(att) = self.item_at(i).cloned() {
                     let _ = sender.output(DrawerOutput::ShowInMessage(att));
+                }
+            }
+            AttachmentDrawerInput::MarkDeleting(name, len) => {
+                self.deleting.push((name, len));
+                self.rebuild_unless_fading(&sender);
+            }
+            AttachmentDrawerInput::NotDeleted(name, len) => {
+                if let Some(at) = self.deleting.iter().position(|d| *d == (name.clone(), len)) {
+                    self.deleting.remove(at);
+                    self.rebuild_unless_fading(&sender);
+                }
+            }
+            AttachmentDrawerInput::Deleted(name, len) => {
+                if !self.deleting.contains(&(name.clone(), len)) {
+                    return;
+                }
+                let shown = (0..self.display_order.len())
+                    .find(|&i| self.item_at(i).is_some_and(|a| a.name == name && a.data.len() == len))
+                    .and_then(|i| self.flow.child_at_index(i as i32));
+                self.fading += 1;
+                let s = sender.clone();
+                let done = move || s.input(AttachmentDrawerInput::FadeDone(name.clone(), len));
+                match shown {
+                    Some(child) => fade_out(&child, done),
+                    None => done(),
+                }
+            }
+            AttachmentDrawerInput::FadeDone(name, len) => {
+                self.fading = self.fading.saturating_sub(1);
+                self.deleting.retain(|d| *d != (name.clone(), len));
+                if let Some(at) = self.items.iter().position(|a| a.name == name && a.data.len() == len) {
+                    self.items.remove(at);
+                }
+                if self.fading == 0 {
+                    if let Some(items) = self.pending_items.take() {
+                        self.items = items;
+                    }
+                    self.update_pill_visibility();
+                    self.rebuild(&sender);
+                }
+            }
+            AttachmentDrawerInput::DeleteFromServer(i) => {
+                if let Some(att) = self.item_at(i).cloned() {
+                    let _ = sender.output(DrawerOutput::DeleteFromServer(att));
                 }
             }
             AttachmentDrawerInput::Activate(i) => {
@@ -960,12 +1031,21 @@ impl AttachmentDrawer {
         self.display_order = order;
         for (i, &orig) in self.display_order.iter().enumerate() {
             let att = &self.items[orig];
+            let deleting = self.deleting.iter().any(|(n, l)| *n == att.name && *l == att.data.len());
             let cell = if self.list_view {
-                build_list_row(i, att, sender)
+                build_list_row(i, att, deleting, sender)
             } else {
-                build_cell(i, att, self.thumb, sender)
+                build_cell(i, att, self.thumb, deleting, sender)
             };
             self.flow.insert(&cell, -1);
+        }
+    }
+
+    /// Rebuild for a changed mark, unless a fade is running: its cell has
+    /// to stay put until it is gone, and the rebuild comes after it.
+    fn rebuild_unless_fading(&mut self, sender: &ComponentSender<Self>) {
+        if self.fading == 0 {
+            self.rebuild(sender);
         }
     }
 
@@ -1009,7 +1089,8 @@ impl AttachmentDrawer {
         });
     }
 
-    /// Right-click menu: Open / Download, matching the gallery's actions.
+    /// Right-click menu: Open / Download, Show in Message, and Delete from
+    /// Server, matching the gallery's actions.
     fn show_context_menu(&self, index: usize, x: f64, y: f64, sender: &ComponentSender<Self>) {
         let s = sender.clone();
         let open = MenuEntry::new(i18n("Open"), move || s.input(AttachmentDrawerInput::Open(index)))
@@ -1025,6 +1106,11 @@ impl AttachmentDrawer {
             s.input(AttachmentDrawerInput::ShowInMessage(index))
         })
         .icon("mail-unread-symbolic");
+        let s = sender.clone();
+        let delete = MenuEntry::new(i18n("Delete from Server…"), move || {
+            s.input(AttachmentDrawerInput::DeleteFromServer(index))
+        })
+        .icon("user-trash-symbolic");
 
         // Anchor on the clicked cell itself so the click point (already
         // relative to it) needs no coordinate translation.
@@ -1033,7 +1119,7 @@ impl AttachmentDrawer {
             .child_at_index(index as i32)
             .map(|c| c.upcast())
             .unwrap_or_else(|| self.flow.clone().upcast());
-        show_context_menu(&parent, x, y, vec![vec![open, download], vec![show]]);
+        show_context_menu(&parent, x, y, vec![vec![open, download], vec![show], vec![delete]]);
     }
 
     /// Ask the app to show its full-window lightbox over the message's
@@ -1076,6 +1162,7 @@ fn build_cell(
     index: usize,
     att: &Attachment,
     thumb: i32,
+    deleting: bool,
     sender: &ComponentSender<AttachmentDrawer>,
 ) -> gtk::FlowBoxChild {
     let cell = gtk::Box::new(gtk::Orientation::Vertical, 4);
@@ -1148,13 +1235,22 @@ fn build_cell(
         import.connect_clicked(move |_| s.input(AttachmentDrawerInput::ImportKey(index)));
         actions.append(&import);
     }
-    overlay.add_overlay(&actions);
+    if deleting {
+        cell.add_css_class("attachment-deleting");
+        overlay.add_overlay(&deleting_veil(false));
+    } else {
+        overlay.add_overlay(&actions);
+    }
 
     cell.append(&overlay);
 
-    let name = gtk::Label::new(Some(&att.name));
-    name.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
-    name.set_max_width_chars(1);
+    // The name, or "Deleting…" while the file is deleted from the server:
+    // whole, even where it is wider than the smallest thumbnail.
+    let name = if deleting { deleting_label() } else { gtk::Label::new(Some(&att.name)) };
+    if !deleting {
+        name.set_ellipsize(gtk::pango::EllipsizeMode::Middle);
+        name.set_max_width_chars(1);
+    }
     name.set_width_request(thumb);
     name.set_justify(gtk::Justification::Center);
     name.set_tooltip_text(Some(&att.name));
@@ -1167,6 +1263,11 @@ fn build_cell(
     // The full filename on hover anywhere in the cell — the label below the
     // thumbnail is ellipsized, so the thumbnail itself must answer too.
     child.set_tooltip_text(Some(&att.name));
+    // Nothing more to do with a file on its way off the server.
+    if deleting {
+        child.set_can_target(false);
+        return child;
+    }
 
     // Right-click → context menu at the click point.
     let right = gtk::GestureClick::new();
@@ -1205,6 +1306,7 @@ fn add_double_click_open(
 fn build_list_row(
     index: usize,
     att: &Attachment,
+    deleting: bool,
     sender: &ComponentSender<AttachmentDrawer>,
 ) -> gtk::FlowBoxChild {
     let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
@@ -1235,18 +1337,32 @@ fn build_list_row(
         b.set_tooltip_text(Some(tip));
         b
     };
+    // Spaced as the row spaces its other parts.
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let download = action_btn("folder-download-symbolic", "Download");
     let s = sender.clone();
     download.connect_clicked(move |_| s.input(AttachmentDrawerInput::Download(index)));
-    row.append(&download);
+    actions.append(&download);
     let open = action_btn("document-open-symbolic", "Open");
     let s = sender.clone();
     open.connect_clicked(move |_| s.input(AttachmentDrawerInput::Open(index)));
-    row.append(&open);
+    actions.append(&open);
+    if deleting {
+        row.append(&deleting_over(&actions));
+    } else {
+        row.append(&actions);
+    }
 
     let child = gtk::FlowBoxChild::new();
     child.set_child(Some(&row));
     child.set_tooltip_text(Some(&att.name));
+    if deleting {
+        // The ground on the cell itself, where the hover and selection
+        // highlights are drawn, so it has their shape.
+        child.add_css_class("attachment-deleting");
+        child.set_can_target(false);
+        return child;
+    }
 
     let right = gtk::GestureClick::new();
     right.set_button(gtk::gdk::BUTTON_SECONDARY);

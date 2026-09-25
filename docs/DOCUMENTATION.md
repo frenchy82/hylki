@@ -41,8 +41,9 @@ connection test's text can be selected and copied.
 
 Any mail account set up in *GNOME Settings → Online Accounts* can be
 imported: Google, Microsoft 365 and plain **IMAP and SMTP** accounts alike.
-They are listed in the first-run wizard and under **Settings → Accounts →
-GNOME Online Accounts**, where a switch brings one into Hylki.
+They are listed on the first-run wizard's first account page, which can be
+skipped, and under **Settings → Accounts → GNOME Online Accounts**, where a
+switch brings one into Hylki.
 
 GNOME keeps such an account's address, servers and password, and Hylki
 follows it. The password is read from GNOME Online Accounts each time the
@@ -143,6 +144,33 @@ or to an account without a Trash folder cannot be undone.
 IMAP and JMAP accounts can receive mail this way. A Microsoft account and a
 POP3 account can be moved from but not into: Microsoft files a message added
 to a folder as a draft, and POP3 has only an inbox.
+
+### Deleting an attachment from the server
+
+**Delete from Server…** in the right-click menu of a file in the attachment
+drawer, or in the attachment gallery, takes that one file out of the message
+on the server, to save space there. The rest of the message stays: its text,
+its other files, where it is filed, its read, starred and tag state, and its
+date. Hylki asks first, as the change reaches every device that reads the
+account and cannot be undone. Save the file first if you want to keep a copy.
+While the server works, the file shows pale red with "Deleting…" in place of
+its buttons, then fades out; if the server refuses, it comes back as it was.
+
+An IMAP or JMAP server cannot edit a message, so Hylki stores a copy without
+the file and then deletes the original; the copy stands where the original
+was. In place of the file the copy carries a short note in the format
+Thunderbird uses, so Thunderbird shows it as a deleted attachment and Hylki
+leaves it out of the list. A Microsoft account deletes the file from the
+message itself.
+
+It is refused where it would not save space or would break the message:
+
+- **Gmail**, which keeps every message in All Mail as well, so the original
+  would stay there, file and all.
+- **POP3**, which has no way to change a message on the server.
+- **A signed or encrypted message**, where removing a file breaks the
+  signature or cannot be done at all.
+- **A message that is nothing but the file**, which is better deleted whole.
 
 ### OAuth (Google / Microsoft)
 
@@ -258,6 +286,16 @@ message, so it closes what you wrote rather than what the other person did.
 **Settings → Composing → Signature in replies** moves it below the quoted
 message instead, the placement Hylki had before 1.38. The setting applies
 when a composer opens; a draft keeps its signature wherever it was saved.
+
+### Return and Shift+Return
+
+In the rich text editor <kbd>Return</kbd> starts a new line in the same
+paragraph, and <kbd>Shift+Return</kbd> ends the paragraph with a hard
+return, which leaves a space before the next one. **Settings → Composing →
+Return starts a new paragraph** swaps the two. In a list <kbd>Return</kbd>
+still starts the next item, and pressed twice in a quote it still leaves the
+quote. The setting applies when a composer opens. Markdown, HTML and plain
+text are written as source, where <kbd>Return</kbd> is always a new line.
 
 ### Writing in Markdown or HTML
 
@@ -410,6 +448,35 @@ be decrypted. Click the icon for the details.
 - *Nothing to encrypt with for an address*: that person's key is missing;
   see step 3.
 
+### Dragging files into a message
+
+Files dragged from a file manager over a composer bring up a card for each
+place they can go, and the files go where they are let go:
+
+- **Attach** sends them with the message.
+- **Insert in Text** places the pictures in the message where the cursor is
+  (at the top when the cursor is not in the text), and attaches any other
+  file. It is offered when the files include a PNG, JPEG, GIF, WebP, BMP,
+  SVG or AVIF picture of 32 MB or less, and only while the message is being
+  written as rich text: plain text has nowhere to put a picture, and in
+  Markdown or HTML the reference is yours to write.
+- **Upload to Cloud** opens the upload dialog for the files, as the
+  composer's cloud button does. It is offered when a cloud storage account
+  is set up (see [Cloud attachments](#cloud-attachments-nextcloud-onedrive-dropbox-seafile)).
+
+Letting go between the cards attaches the files. A composer in a window of
+its own shows the cards too.
+
+Dragged over the main window with no message being written in it, files
+bring up the same cards side by side, each starting a new message: **Attach
+to New Message**, **Insert in New Message** and **Share Link in New
+Message**, offered on the same terms (Insert in New Message when new
+messages start as rich text, in **Settings → Composing → Write messages
+in**). Attach to New
+Message asks about files over the size limit the way *Send with Hylki* does
+(below). While a message is being written in the main window, files dropped
+anywhere else in it go into that message. Folders are skipped.
+
 ### Send with Hylki from GNOME Files
 
 Select files in GNOME Files (Nautilus), right-click, *Send with Hylki*: a new
@@ -501,6 +568,22 @@ and **Forward** open the message with the composer started. Settings →
 General → Notification Buttons picks any three of the six (Mark as Read,
 Archive and Delete to begin with); a notification that sums up several new
 messages carries none. Stored as `notification_buttons` in `privacy.toml`.
+
+**Settings → General → Sound for new mail** plays a sound with each new-mail
+notification. It is off until switched on. **Sound** picks one of GNOME's four
+alert sounds (Click, Hum, String and Swing, built into Hylki) or **Custom
+File**, which adds a **Choose…** button for a file of your own (any format
+GStreamer can play, such as WAV, MP3, OGG or FLAC). Picking a sound plays it,
+and so does the play button. A custom file is copied to
+`~/.local/share/hylki/notification-sound/`, so the original can be moved or
+deleted; the choice is stored in `sound.toml`. The desktop's own sound theme
+is not offered: the Flatpak cannot read the host's sounds. Several accounts
+receiving mail at once play the sound once. It is not played when event
+sounds are switched off in GNOME, or, in a native install, while Do Not
+Disturb is on. The Flatpak cannot see Do Not Disturb: the desktop does not
+share that setting with sandboxed apps. The desktop may play a sound of its
+own for the notification as well; GNOME Settings → Notifications → Hylki →
+Sound Alerts turns that one off.
 
 ## Privacy
 

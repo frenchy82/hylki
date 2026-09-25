@@ -251,6 +251,10 @@ msgstr "Nem érhető el címjegyzék"
 msgid "Could not update contact: {e}"
 msgstr "A névjegy nem frissíthető: {e}"
 
+#, fuzzy
+msgid "Hide Status Bar"
+msgstr "Állapotsáv megjelenítése"
+
 msgid "Reveal Status Bar"
 msgstr "Állapotsáv megjelenítése"
 
@@ -450,6 +454,15 @@ msgstr "Törli ezt a beszélgetést?"
 
 msgid "Delete Conversation"
 msgstr "Beszélgetés törlése"
+
+#, fuzzy
+msgid "Delete the attachment from the server?"
+msgstr "Mellékletek betöltése a kiszolgálóról"
+
+msgid ""
+"“{name}” will be removed from the message on the server. The rest of the "
+"message stays. This can’t be undone."
+msgstr ""
 
 msgid "Delete this message permanently?"
 msgid_plural "Delete {n} messages permanently?"
@@ -1979,6 +1992,10 @@ msgstr "A kulcs nem importálható"
 msgid "Show in Message"
 msgstr "Ugrás az üzenethez"
 
+#, fuzzy
+msgid "Delete from Server…"
+msgstr "Mappa törlése…"
+
 msgid "Import OpenPGP key"
 msgstr "OpenPGP-kulcs importálása"
 
@@ -2086,6 +2103,10 @@ msgstr "Ugrás az üzenethez"
 
 msgid "All accounts"
 msgstr ""
+
+#, fuzzy
+msgid "Deleting…"
+msgstr "Törlés…"
 
 #. Deliberately counts messages, not attachments: until a message has
 #. been described there is no telling how many files it holds.
@@ -2591,6 +2612,20 @@ msgstr "{name} (hivatkozás)"
 msgid "Uploading…"
 msgstr "Feltöltés…"
 
+#, fuzzy
+msgid "Save the message?"
+msgstr "Üzenet archiválása"
+
+msgid "It has not been sent. Save it to Drafts to finish later, or discard it."
+msgstr ""
+
+#, fuzzy
+msgid "Keep Editing"
+msgstr "Beállítások"
+
+msgid "Discard"
+msgstr "Elvetés"
+
 msgid "Upload {n} file and put its share link in the message."
 msgid_plural "Upload {n} files and put their share links in the message."
 msgstr[0] ""
@@ -2699,6 +2734,83 @@ msgid "Add website"
 msgstr "Webhely hozzáadása"
 
 #, fuzzy
+msgid "Attach"
+msgstr "Mellékletek"
+
+#, fuzzy
+msgid "Insert in Text"
+msgstr "Hivatkozás beszúrása"
+
+#, fuzzy
+msgid "Upload to Cloud"
+msgstr "Feltöltés felhőtárhelyre"
+
+#, fuzzy
+msgid "Attach to New Message"
+msgstr "Művelet az üzeneten"
+
+#, fuzzy
+msgid "Insert in New Message"
+msgstr "Új üzenet"
+
+#, fuzzy
+msgid "Share Link in New Message"
+msgid_plural "Share Links in New Message"
+msgstr[0] "Ugrás az üzenethez"
+msgstr[1] "Ugrás az üzenethez"
+
+msgid "{n} file · {size}"
+msgid_plural "{n} files · {size}"
+msgstr[0] ""
+msgstr[1] ""
+
+#, fuzzy
+msgid "Send as a normal attachment"
+msgid_plural "Send as normal attachments"
+msgstr[0] "Küldés inkább mellékletként"
+msgstr[1] "Küldés inkább mellékletként"
+
+#, fuzzy
+msgid "Place the picture where the cursor is"
+msgid_plural "Place the pictures where the cursor is"
+msgstr[0] "Műveletpaletta az üzenetlistában"
+msgstr[1] "Műveletpaletta az üzenetlistában"
+
+msgid "Pictures insert where the cursor is placed, other files attach normally"
+msgstr ""
+
+msgid "Share a download link from {name}"
+msgstr ""
+
+msgid "Share a download link"
+msgstr ""
+
+msgid "Start a message with the file attached"
+msgid_plural "Start a message with the files attached"
+msgstr[0] ""
+msgstr[1] ""
+
+#, fuzzy
+msgid "Start a message with the picture in the text"
+msgid_plural "Start a message with the pictures in the text"
+msgstr[0] "Előbb nyisson meg egy üzenetet, majd nyomtassa ki."
+msgstr[1] "Előbb nyisson meg egy üzenetet, majd nyomtassa ki."
+
+msgid ""
+"Start a message with the pictures in the text and the other files attached"
+msgstr ""
+
+msgid "Start a message with a download link from {name}"
+msgid_plural "Start a message with download links from {name}"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Start a message with a download link"
+msgid_plural "Start a message with download links"
+msgstr[0] ""
+msgstr[1] ""
+
+#, fuzzy
 msgid "Whole conversation"
 msgstr "Beszélgetés megjelenítése"
 
@@ -2790,6 +2902,13 @@ msgstr ""
 #, fuzzy
 msgid "Try Again"
 msgstr "Újraellenőrzés"
+
+#. Mail sent well after the request means the list did not
+#. act on it, or that the List-Id covers more than the one
+#. list that was left (#284); the banner must not say
+#. "unsubscribed" over the proof that it was not.
+msgid "You unsubscribed on {date}, but this list is still sending mail."
+msgstr ""
 
 msgid "You unsubscribed from this list on {date}."
 msgstr ""
@@ -3508,9 +3627,6 @@ msgstr ""
 "A fiókszerkesztő meg van nyitva. Mentse a módosításokat, vagy vesse el őket, "
 "mielőtt továbblép."
 
-msgid "Discard"
-msgstr "Elvetés"
-
 msgid "Check for new mail"
 msgstr "Új levelek keresése"
 
@@ -3533,6 +3649,20 @@ msgstr ""
 
 msgid "Show sender and subject"
 msgstr "Feladó és tárgy megjelenítése"
+
+#, fuzzy
+msgid "Sound for new mail"
+msgstr "Új levelek keresése"
+
+msgid "Sound"
+msgstr ""
+
+msgid "Play"
+msgstr ""
+
+#, fuzzy
+msgid "Sound file"
+msgstr "Új levelek keresése"
 
 #, fuzzy
 msgid "Notification Buttons"
@@ -4201,6 +4331,15 @@ msgstr ""
 "beillesztés megőrzi a formázást. A szerkesztő jobb kattintásos menüje mindig "
 "mindkettőt felajánlja."
 
+msgid "Return starts a new paragraph"
+msgstr ""
+
+msgid ""
+"Return ends the paragraph with a hard return and leaves space before the "
+"next. Off, Return starts a new line in the same paragraph. Shift+Return "
+"always does the other."
+msgstr ""
+
 #, fuzzy
 msgid "Write messages in"
 msgstr "Üzenetek rendezése"
@@ -4642,8 +4781,35 @@ msgstr "A kulcs nem importálható"
 msgid "Could not restart Files"
 msgstr "A fájl nem olvasható"
 
+#, fuzzy
+msgid "Choose a Sound"
+msgstr "Navigáció"
+
+msgid "Sounds"
+msgstr ""
+
 msgid "Forget this word"
 msgstr "Szó elfelejtése"
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Click"
+msgstr ""
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Hum"
+msgstr ""
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "String"
+msgstr ""
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Swing"
+msgstr ""
+
+#, fuzzy
+msgid "Custom File"
+msgstr "Egyéni szín…"
 
 msgid "Print Message"
 msgstr "Üzenet nyomtatása"
@@ -4825,11 +4991,27 @@ msgstr ""
 msgid "Get Started"
 msgstr "Kezdés"
 
+#, fuzzy
+msgid "Import your online accounts"
+msgstr "Importálva a GNOME Online-fiókokból"
+
+#, fuzzy
+msgid ""
+"Mail accounts signed in under GNOME Settings → Online Accounts can be added "
+"here in one click. Google and Microsoft accounts are only supported through "
+"Online Accounts."
+msgstr ""
+"A Google- és Microsoft-fiókok a GNOME Beállítások → Online-fiókok menüjén "
+"keresztül jelentkeznek be, majd fent jelennek meg."
+
+msgid "No mail accounts were found in Online Accounts."
+msgstr ""
+
+msgid "Scan Again"
+msgstr "Újraellenőrzés"
+
 msgid "Add your email account"
 msgstr "E-mail-fiók hozzáadása"
-
-msgid "Found in GNOME Online Accounts"
-msgstr "Megtalálható a GNOME Online-fiókok között"
 
 msgid "Your name"
 msgstr "Az Ön neve"
@@ -4850,14 +5032,6 @@ msgstr "IMAP-port"
 
 msgid "Test & Add"
 msgstr "Tesztelés és hozzáadás"
-
-msgid ""
-"Accounts added in GNOME Settings → Online Accounts appear above, IMAP and "
-"SMTP ones included. Google and Microsoft sign in only that way."
-msgstr ""
-
-msgid "Scan Again"
-msgstr "Újraellenőrzés"
 
 msgid "Privacy, your way"
 msgstr "Adatvédelem az Ön módján"
@@ -4928,28 +5102,13 @@ msgstr ""
 "Jó használatot! Ha hibát tapasztal, vagy funkciót szeretne kérni,\n"
 "nyisson hibajegyet a <a href=\"{url}\">GitHubon</a>."
 
-msgid "Start Reading"
-msgstr "Olvasás megkezdése"
-
-#. Fixed footer: Continue lives with the dots so it never scrolls
-#. away with a tall page. Hidden on the hero and final pages, which
-#. carry their own calls to action.
 msgid "Continue"
 msgstr "Folytatás"
 
-#, fuzzy
-msgid "Set Up in Settings"
-msgstr "Beállítások"
-
-msgid ""
-"An OAuth account needs your provider's sign-in details. Settings opens on it "
-"when you finish here."
+msgid "Sign In & Add"
 msgstr ""
 
 msgid "Port"
-msgstr ""
-
-msgid "✓ Settings opens on your OAuth account at the end"
 msgstr ""
 
 msgid "Enter your email address and password first."
@@ -4961,6 +5120,10 @@ msgstr "Kapcsolat ellenőrzése…"
 msgid "✓ {email} — added"
 msgstr "✓ {email} — hozzáadva"
 
+#, fuzzy
+msgid "Add another email account"
+msgstr "E-mail-fiók hozzáadása"
+
 msgid "✓ {email} — connected and added"
 msgstr "✓ {email} — kapcsolódva és hozzáadva"
 
@@ -4969,6 +5132,20 @@ msgstr "{email} — levelezőkiszolgáló: {e}"
 
 msgid "{email} — sending (SMTP): {e}"
 msgstr "{email} — küldés (SMTP): {e}"
+
+#, fuzzy
+msgid "✓ {email} — signed in and added"
+msgstr "✓ {email} — kapcsolódva és hozzáadva"
+
+msgid "Finish"
+msgstr ""
+
+msgid "Skip"
+msgstr ""
+
+#, fuzzy
+msgid "Enter your email address, the client ID and both OAuth URLs first."
+msgstr "Először adja meg az e-mail-címét és a jelszavát."
 
 msgid "Your mail provider confirmed this really came from {from}."
 msgstr ""
@@ -5054,6 +5231,9 @@ msgstr "Küldés…"
 msgid "Still could not send “{subject}”: {e}"
 msgstr "A(z) „{subject}” továbbra sem küldhető el: {e}"
 
+msgid "The attachment is no longer in the message on the server"
+msgstr ""
+
 msgid "Could not load message: {e}"
 msgstr "Az üzenet nem tölthető be: {e}"
 
@@ -5129,7 +5309,26 @@ msgstr "A küldés sikertelen: {e}"
 msgid "Could not reach the server"
 msgstr "A mappa nem hozható létre: {e}"
 
+#, fuzzy
+msgid "Removing the attachment…"
+msgstr "Mellékletek betöltése…"
+
+#, fuzzy
+msgid "Could not remove the attachment: {e}"
+msgstr "A mellékletek nem tölthetők be: {e}"
+
 msgid "That folder is not on the server"
+msgstr ""
+
+msgid "The message is signed or encrypted, and removing a file would break it"
+msgstr ""
+
+msgid "The attachment is the whole message; delete the message instead"
+msgstr ""
+
+msgid ""
+"You deleted an attachment from this message. The original MIME headers for "
+"the attachment were:"
 msgstr ""
 
 msgid "the server's reply could not be read (it began: {reply})"
@@ -5161,6 +5360,11 @@ msgstr "Az üzenet nem címkézhető: {e}"
 
 msgid "Could not mark folder read: {e}"
 msgstr "A mappa nem jelölhető olvasottként: {e}"
+
+msgid ""
+"Gmail keeps a copy of every message in All Mail, so Hylki cannot remove an "
+"attachment there"
+msgstr ""
 
 msgid "Could not move {len} messages: {e}"
 msgstr "{len} üzenet nem helyezhető át: {e}"
@@ -5207,6 +5411,10 @@ msgid "POP3 accounts don't support folders"
 msgstr "A POP3-fiókok nem támogatják a mappákat"
 
 msgid "A POP3 account can't receive mail from another account"
+msgstr ""
+
+msgid ""
+"POP3 cannot change a message on the server, so the attachment was not removed"
 msgstr ""
 
 msgid "Inbox"
@@ -5323,6 +5531,26 @@ msgstr "Az egységes beérkezett nézet világos módban"
 msgid "Hyprlab"
 msgstr "Hyprlab"
 
+#, fuzzy
+#~ msgid "Remove Sound"
+#~ msgstr "Eltávolítja a fiókot?"
+
+#, fuzzy
+#~ msgid "Send it with the message"
+#~ msgid_plural "Send them with the message"
+#~ msgstr[0] "Üzenet archiválása"
+#~ msgstr[1] "Üzenet archiválása"
+
+#~ msgid "Found in GNOME Online Accounts"
+#~ msgstr "Megtalálható a GNOME Online-fiókok között"
+
+#~ msgid "Start Reading"
+#~ msgstr "Olvasás megkezdése"
+
+#, fuzzy
+#~ msgid "Set Up in Settings"
+#~ msgstr "Beállítások"
+
 #~ msgid "Hylki icon"
 #~ msgstr "Hylki ikonja"
 
@@ -5336,13 +5564,6 @@ msgstr "Hyprlab"
 #~ "The Hylki icon, or a plain envelope in white or black to match the panel."
 #~ msgstr ""
 #~ "A Hylki ikonja, vagy a panelhez illő fehér vagy fekete egyszerű boríték."
-
-#~ msgid ""
-#~ "Google and Microsoft accounts sign in through GNOME Settings → Online "
-#~ "Accounts, then appear above."
-#~ msgstr ""
-#~ "A Google- és Microsoft-fiókok a GNOME Beállítások → Online-fiókok menüjén "
-#~ "keresztül jelentkeznek be, majd fent jelennek meg."
 
 #~ msgid "A clean, fast GNOME-native email client"
 #~ msgstr "Tiszta, gyors, GNOME-ba illeszkedő levelezőkliens"

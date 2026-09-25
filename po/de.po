@@ -256,6 +256,10 @@ msgstr "Kein Adressbuch verfügbar"
 msgid "Could not update contact: {e}"
 msgstr "Kontakt konnte nicht aktualisiert werden: {e}"
 
+#, fuzzy
+msgid "Hide Status Bar"
+msgstr "Statusleiste anzeigen"
+
 msgid "Reveal Status Bar"
 msgstr "Statusleiste anzeigen"
 
@@ -449,6 +453,15 @@ msgstr "Diese Unterhaltung löschen?"
 
 msgid "Delete Conversation"
 msgstr "Unterhaltung löschen"
+
+#, fuzzy
+msgid "Delete the attachment from the server?"
+msgstr "Anhänge vom Server laden"
+
+msgid ""
+"“{name}” will be removed from the message on the server. The rest of the "
+"message stays. This can’t be undone."
+msgstr ""
 
 msgid "Delete this message permanently?"
 msgid_plural "Delete {n} messages permanently?"
@@ -2003,6 +2016,10 @@ msgstr "Schlüssel konnte nicht importiert werden"
 msgid "Show in Message"
 msgstr "In Nachricht anzeigen"
 
+#, fuzzy
+msgid "Delete from Server…"
+msgstr "Ordner löschen…"
+
 msgid "Import OpenPGP key"
 msgstr "OpenPGP-Schlüssel importieren"
 
@@ -2108,6 +2125,10 @@ msgstr "Zur Nachricht wechseln"
 
 msgid "All accounts"
 msgstr "Alle Konten"
+
+#, fuzzy
+msgid "Deleting…"
+msgstr "Löschen…"
 
 #. Deliberately counts messages, not attachments: until a message has
 #. been described there is no telling how many files it holds.
@@ -2617,6 +2638,20 @@ msgstr "{name} (Link)"
 msgid "Uploading…"
 msgstr "Wird hochgeladen…"
 
+#, fuzzy
+msgid "Save the message?"
+msgstr "Vor den Meldungen"
+
+msgid "It has not been sent. Save it to Drafts to finish later, or discard it."
+msgstr ""
+
+#, fuzzy
+msgid "Keep Editing"
+msgstr "Besprechung"
+
+msgid "Discard"
+msgstr "Verwerfen"
+
 msgid "Upload {n} file and put its share link in the message."
 msgid_plural "Upload {n} files and put their share links in the message."
 msgstr[0] ""
@@ -2723,6 +2758,84 @@ msgstr "Telefonnummer hinzufügen"
 msgid "Add website"
 msgstr "Website hinzufügen"
 
+#, fuzzy
+msgid "Attach"
+msgstr "Anhänge"
+
+#, fuzzy
+msgid "Insert in Text"
+msgstr "Link einfügen"
+
+#, fuzzy
+msgid "Upload to Cloud"
+msgstr "In Cloud-Speicher hochladen"
+
+#, fuzzy
+msgid "Attach to New Message"
+msgstr "Anhänge jeder Nachricht"
+
+#, fuzzy
+msgid "Insert in New Message"
+msgstr "Als neue Nachricht bearbeiten"
+
+#, fuzzy
+msgid "Share Link in New Message"
+msgid_plural "Share Links in New Message"
+msgstr[0] "In Nachricht suchen"
+msgstr[1] "In Nachricht suchen"
+
+msgid "{n} file · {size}"
+msgid_plural "{n} files · {size}"
+msgstr[0] ""
+msgstr[1] ""
+
+#, fuzzy
+msgid "Send as a normal attachment"
+msgid_plural "Send as normal attachments"
+msgstr[0] "Stattdessen als Anhang senden"
+msgstr[1] "Stattdessen als Anhang senden"
+
+#, fuzzy
+msgid "Place the picture where the cursor is"
+msgid_plural "Place the pictures where the cursor is"
+msgstr[0] "Aktionspalette in der Nachrichtenliste"
+msgstr[1] "Aktionspalette in der Nachrichtenliste"
+
+msgid "Pictures insert where the cursor is placed, other files attach normally"
+msgstr ""
+
+msgid "Share a download link from {name}"
+msgstr ""
+
+msgid "Share a download link"
+msgstr ""
+
+#, fuzzy
+msgid "Start a message with the file attached"
+msgid_plural "Start a message with the files attached"
+msgstr[0] "Eine neue Nachricht mit {n}-Datei ist in Hylki geöffnet."
+msgstr[1] "Eine neue Nachricht mit {n} Dateien ist in Hylki geöffnet."
+
+#, fuzzy
+msgid "Start a message with the picture in the text"
+msgid_plural "Start a message with the pictures in the text"
+msgstr[0] "Öffnen Sie zuerst eine Nachricht und drucken Sie sie dann aus."
+msgstr[1] "Öffnen Sie zuerst eine Nachricht und drucken Sie sie dann aus."
+
+msgid ""
+"Start a message with the pictures in the text and the other files attached"
+msgstr ""
+
+msgid "Start a message with a download link from {name}"
+msgid_plural "Start a message with download links from {name}"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Start a message with a download link"
+msgid_plural "Start a message with download links"
+msgstr[0] ""
+msgstr[1] ""
+
 msgid "Whole conversation"
 msgstr "Gesamte Unterhaltung"
 
@@ -2815,6 +2928,14 @@ msgstr "Abmeldung fehlgeschlagen: {why}"
 
 msgid "Try Again"
 msgstr "Erneut versuchen"
+
+#. Mail sent well after the request means the list did not
+#. act on it, or that the List-Id covers more than the one
+#. list that was left (#284); the banner must not say
+#. "unsubscribed" over the proof that it was not.
+#, fuzzy
+msgid "You unsubscribed on {date}, but this list is still sending mail."
+msgstr "Sie haben sich am {date} von dieser Liste abgemeldet."
 
 msgid "You unsubscribed from this list on {date}."
 msgstr "Sie haben sich am {date} von dieser Liste abgemeldet."
@@ -3539,9 +3660,6 @@ msgstr ""
 "Der Kontoeditor ist geöffnet. Speichern oder verwerfen Sie Ihre Änderungen, "
 "bevor Sie fortfahren."
 
-msgid "Discard"
-msgstr "Verwerfen"
-
 msgid "Check for new mail"
 msgstr "Auf neue Nachrichten prüfen"
 
@@ -3563,6 +3681,20 @@ msgstr ""
 
 msgid "Show sender and subject"
 msgstr "Absender und Betreff anzeigen"
+
+#, fuzzy
+msgid "Sound for new mail"
+msgstr "Auf neue Nachrichten prüfen"
+
+msgid "Sound"
+msgstr ""
+
+msgid "Play"
+msgstr ""
+
+#, fuzzy
+msgid "Sound file"
+msgstr "Auf neue Nachrichten prüfen"
 
 msgid "Notification Buttons"
 msgstr "Schaltflächen in Benachrichtigungen"
@@ -4304,6 +4436,15 @@ msgstr ""
 "entfernt. Ausgeschaltet, eine Paste behält ihre Formatierung bei. Mit der "
 "rechten Maustaste bietet der Editor immer beides."
 
+msgid "Return starts a new paragraph"
+msgstr ""
+
+msgid ""
+"Return ends the paragraph with a hard return and leaves space before the "
+"next. Off, Return starts a new line in the same paragraph. Shift+Return "
+"always does the other."
+msgstr ""
+
 msgid "Write messages in"
 msgstr "Nachrichten schreiben als"
 
@@ -4754,8 +4895,35 @@ msgstr "Erweiterung konnte nicht entfernt werden"
 msgid "Could not restart Files"
 msgstr "Es konnten keine Dateien neu gestartet werden"
 
+#, fuzzy
+msgid "Choose a Sound"
+msgstr "Wählen Sie ein Bild"
+
+msgid "Sounds"
+msgstr ""
+
 msgid "Forget this word"
 msgstr "Dieses Wort vergessen"
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Click"
+msgstr ""
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Hum"
+msgstr ""
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "String"
+msgstr ""
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Swing"
+msgstr ""
+
+#, fuzzy
+msgid "Custom File"
+msgstr "Benutzerdefinierte Farbe..."
 
 msgid "Print Message"
 msgstr "Nachricht drucken"
@@ -4937,11 +5105,28 @@ msgstr ""
 msgid "Get Started"
 msgstr "Loslegen"
 
+#, fuzzy
+msgid "Import your online accounts"
+msgstr "Importiertes GNOME Online Konto"
+
+#, fuzzy
+msgid ""
+"Mail accounts signed in under GNOME Settings → Online Accounts can be added "
+"here in one click. Google and Microsoft accounts are only supported through "
+"Online Accounts."
+msgstr ""
+"In GNOME-Einstellungen hinzugefügte Konten → Online-Konten werden oben "
+"angezeigt, IMAP- und SMTP-Konten enthalten. Google und Microsoft melden sich "
+"nur so an."
+
+msgid "No mail accounts were found in Online Accounts."
+msgstr ""
+
+msgid "Scan Again"
+msgstr "Erneut suchen"
+
 msgid "Add your email account"
 msgstr "E-Mail-Konto hinzufügen"
-
-msgid "Found in GNOME Online Accounts"
-msgstr "Gefunden in GNOME Online Accounts"
 
 msgid "Your name"
 msgstr "Ihr Name"
@@ -4962,17 +5147,6 @@ msgstr "IMAP-Port"
 
 msgid "Test & Add"
 msgstr "Testen und hinzufügen"
-
-msgid ""
-"Accounts added in GNOME Settings → Online Accounts appear above, IMAP and "
-"SMTP ones included. Google and Microsoft sign in only that way."
-msgstr ""
-"In GNOME-Einstellungen hinzugefügte Konten → Online-Konten werden oben "
-"angezeigt, IMAP- und SMTP-Konten enthalten. Google und Microsoft melden sich "
-"nur so an."
-
-msgid "Scan Again"
-msgstr "Erneut suchen"
 
 msgid "Privacy, your way"
 msgstr "Privatsphäre, dein Weg"
@@ -5045,29 +5219,14 @@ msgstr ""
 "Genießen Sie! Wenn Sie ein Problem haben oder eine Feature-Anfrage haben,\n"
 "Bitte öffnen Sie ein Problem auf unserem <a href=\"{url}\">Github</a>."
 
-msgid "Start Reading"
-msgstr "Nachrichten lesen"
-
-#. Fixed footer: Continue lives with the dots so it never scrolls
-#. away with a tall page. Hidden on the hero and final pages, which
-#. carry their own calls to action.
 msgid "Continue"
 msgstr "Weiter"
 
-#, fuzzy
-msgid "Set Up in Settings"
-msgstr "Einstellungen"
-
-msgid ""
-"An OAuth account needs your provider's sign-in details. Settings opens on it "
-"when you finish here."
+msgid "Sign In & Add"
 msgstr ""
 
 msgid "Port"
 msgstr "Port"
-
-msgid "✓ Settings opens on your OAuth account at the end"
-msgstr ""
 
 msgid "Enter your email address and password first."
 msgstr "Geben Sie zuerst Ihre E-Mail-Adresse und Ihr Passwort ein."
@@ -5078,6 +5237,10 @@ msgstr "Verbindung wird geprüft…"
 msgid "✓ {email} — added"
 msgstr "✓ {email} - hinzugefügt"
 
+#, fuzzy
+msgid "Add another email account"
+msgstr "E-Mail-Konto hinzufügen"
+
 msgid "✓ {email} — connected and added"
 msgstr "{email} - verbunden und hinzugefügt"
 
@@ -5086,6 +5249,20 @@ msgstr "{email} — Mailserver: {e}"
 
 msgid "{email} — sending (SMTP): {e}"
 msgstr "{email} — Senden (SMTP): {e}"
+
+#, fuzzy
+msgid "✓ {email} — signed in and added"
+msgstr "{email} - verbunden und hinzugefügt"
+
+msgid "Finish"
+msgstr ""
+
+msgid "Skip"
+msgstr ""
+
+#, fuzzy
+msgid "Enter your email address, the client ID and both OAuth URLs first."
+msgstr "Geben Sie zuerst Ihre E-Mail-Adresse und Ihr Passwort ein."
 
 msgid "Your mail provider confirmed this really came from {from}."
 msgstr "Ihr Mail-Provider bestätigte, dass dies wirklich von {from} kam."
@@ -5168,6 +5345,9 @@ msgstr "Wird gesendet…"
 msgid "Still could not send “{subject}”: {e}"
 msgstr "„{subject}“ konnte immer noch nicht gesendet werden: {e}"
 
+msgid "The attachment is no longer in the message on the server"
+msgstr ""
+
 msgid "Could not load message: {e}"
 msgstr "Nachricht konnte nicht geladen werden: {e}"
 
@@ -5241,7 +5421,29 @@ msgstr "Senden fehlgeschlagen: {e}"
 msgid "Could not reach the server"
 msgstr ""
 
+#, fuzzy
+msgid "Removing the attachment…"
+msgstr "Anhänge werden geladen…"
+
+#, fuzzy
+msgid "Could not remove the attachment: {e}"
+msgstr "Konnte keine Anhänge laden: {e}"
+
 msgid "That folder is not on the server"
+msgstr ""
+
+msgid "The message is signed or encrypted, and removing a file would break it"
+msgstr ""
+
+#, fuzzy
+msgid "The attachment is the whole message; delete the message instead"
+msgstr ""
+"Sammeln sie jeden anhang in der offenen konversation in einer schublade "
+"unter den nachrichten."
+
+msgid ""
+"You deleted an attachment from this message. The original MIME headers for "
+"the attachment were:"
 msgstr ""
 
 msgid "the server's reply could not be read (it began: {reply})"
@@ -5274,6 +5476,11 @@ msgstr "Nachricht konnte nicht mit Tag versehen werden: {e}"
 
 msgid "Could not mark folder read: {e}"
 msgstr "Ordner konnte nicht als gelesen markiert werden: {e}"
+
+msgid ""
+"Gmail keeps a copy of every message in All Mail, so Hylki cannot remove an "
+"attachment there"
+msgstr ""
 
 msgid "Could not move {len} messages: {e}"
 msgstr "{len} Nachrichten konnten nicht verschoben werden: {e}"
@@ -5323,6 +5530,10 @@ msgid "POP3 accounts don't support folders"
 msgstr "POP3-Konten unterstützen keine Ordner"
 
 msgid "A POP3 account can't receive mail from another account"
+msgstr ""
+
+msgid ""
+"POP3 cannot change a message on the server, so the attachment was not removed"
 msgstr ""
 
 msgid "Inbox"
@@ -5466,6 +5677,26 @@ msgstr "Der einheitliche Posteingang im Lichtmodus"
 
 msgid "Hyprlab"
 msgstr "Hyprlab"
+
+#, fuzzy
+#~ msgid "Remove Sound"
+#~ msgstr "Konto entfernen?"
+
+#, fuzzy
+#~ msgid "Send it with the message"
+#~ msgid_plural "Send them with the message"
+#~ msgstr[0] "Vor den Meldungen"
+#~ msgstr[1] "Vor den Meldungen"
+
+#~ msgid "Found in GNOME Online Accounts"
+#~ msgstr "Gefunden in GNOME Online Accounts"
+
+#~ msgid "Start Reading"
+#~ msgstr "Nachrichten lesen"
+
+#, fuzzy
+#~ msgid "Set Up in Settings"
+#~ msgstr "Einstellungen"
 
 #~ msgid "One message stayed put — mail can't be moved between accounts"
 #~ msgstr ""

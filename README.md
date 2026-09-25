@@ -5,7 +5,7 @@
 <h1 align="center">Hylki</h1>
 
 <p align="center">
-  A fast, GNOME-native email client, built with Rust and libadwaita. Open source and private by default. 
+  A fast, GNOME-native email client, built with Rust and libadwaita.
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@ It is free software, built for GNOME, to be feature rich and beautiful
 
 > [!NOTE]
 > **Vireo is now Hylki.** Since v1.35.0 the app once called Vireo (and Veem
-> before v1.6.0) has been called Hylki, with a new icon. Nothing else changed.
+> before v1.6.0) has been renamed Hylki, with a new icon. Nothing else changed.
 > The first time Hylki starts, it copies your accounts, settings and cached
 > mail over from Vireo, and leaves Vireo alone until you remove it.
 

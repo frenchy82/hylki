@@ -243,6 +243,9 @@ msgstr ""
 msgid "Could not update contact: {e}"
 msgstr ""
 
+msgid "Hide Status Bar"
+msgstr ""
+
 msgid "Reveal Status Bar"
 msgstr ""
 
@@ -419,6 +422,14 @@ msgid "Delete this conversation?"
 msgstr ""
 
 msgid "Delete Conversation"
+msgstr ""
+
+msgid "Delete the attachment from the server?"
+msgstr ""
+
+msgid ""
+"“{name}” will be removed from the message on the server. The rest of the "
+"message stays. This can’t be undone."
 msgstr ""
 
 msgid "Delete this message permanently?"
@@ -1826,6 +1837,9 @@ msgstr ""
 msgid "Show in Message"
 msgstr ""
 
+msgid "Delete from Server…"
+msgstr ""
+
 msgid "Import OpenPGP key"
 msgstr ""
 
@@ -1928,6 +1942,9 @@ msgid "Go to Message"
 msgstr ""
 
 msgid "All accounts"
+msgstr ""
+
+msgid "Deleting…"
 msgstr ""
 
 #. Deliberately counts messages, not attachments: until a message has
@@ -2360,6 +2377,18 @@ msgstr ""
 msgid "Uploading…"
 msgstr ""
 
+msgid "Save the message?"
+msgstr ""
+
+msgid "It has not been sent. Save it to Drafts to finish later, or discard it."
+msgstr ""
+
+msgid "Keep Editing"
+msgstr ""
+
+msgid "Discard"
+msgstr ""
+
 msgid "Upload {n} file and put its share link in the message."
 msgid_plural "Upload {n} files and put their share links in the message."
 msgstr[0] ""
@@ -2459,6 +2488,74 @@ msgstr ""
 msgid "Add website"
 msgstr ""
 
+msgid "Attach"
+msgstr ""
+
+msgid "Insert in Text"
+msgstr ""
+
+msgid "Upload to Cloud"
+msgstr ""
+
+msgid "Attach to New Message"
+msgstr ""
+
+msgid "Insert in New Message"
+msgstr ""
+
+msgid "Share Link in New Message"
+msgid_plural "Share Links in New Message"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "{n} file · {size}"
+msgid_plural "{n} files · {size}"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Send as a normal attachment"
+msgid_plural "Send as normal attachments"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Place the picture where the cursor is"
+msgid_plural "Place the pictures where the cursor is"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Pictures insert where the cursor is placed, other files attach normally"
+msgstr ""
+
+msgid "Share a download link from {name}"
+msgstr ""
+
+msgid "Share a download link"
+msgstr ""
+
+msgid "Start a message with the file attached"
+msgid_plural "Start a message with the files attached"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Start a message with the picture in the text"
+msgid_plural "Start a message with the pictures in the text"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid ""
+"Start a message with the pictures in the text and the other files attached"
+msgstr ""
+
+msgid "Start a message with a download link from {name}"
+msgid_plural "Start a message with download links from {name}"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Start a message with a download link"
+msgid_plural "Start a message with download links"
+msgstr[0] ""
+msgstr[1] ""
+
 msgid "Whole conversation"
 msgstr ""
 
@@ -2544,6 +2641,13 @@ msgid "Unsubscribing didn't work: {why}"
 msgstr ""
 
 msgid "Try Again"
+msgstr ""
+
+#. Mail sent well after the request means the list did not
+#. act on it, or that the List-Id covers more than the one
+#. list that was left (#284); the banner must not say
+#. "unsubscribed" over the proof that it was not.
+msgid "You unsubscribed on {date}, but this list is still sending mail."
 msgstr ""
 
 msgid "You unsubscribed from this list on {date}."
@@ -3211,9 +3315,6 @@ msgid ""
 "moving on."
 msgstr ""
 
-msgid "Discard"
-msgstr ""
-
 msgid "Check for new mail"
 msgstr ""
 
@@ -3232,6 +3333,18 @@ msgid ""
 msgstr ""
 
 msgid "Show sender and subject"
+msgstr ""
+
+msgid "Sound for new mail"
+msgstr ""
+
+msgid "Sound"
+msgstr ""
+
+msgid "Play"
+msgstr ""
+
+msgid "Sound file"
 msgstr ""
 
 msgid "Notification Buttons"
@@ -3823,6 +3936,15 @@ msgid ""
 "its formatting. Right-clicking the editor always offers both."
 msgstr ""
 
+msgid "Return starts a new paragraph"
+msgstr ""
+
+msgid ""
+"Return ends the paragraph with a hard return and leaves space before the "
+"next. Off, Return starts a new line in the same paragraph. Shift+Return "
+"always does the other."
+msgstr ""
+
 msgid "Write messages in"
 msgstr ""
 
@@ -4199,7 +4321,32 @@ msgstr ""
 msgid "Could not restart Files"
 msgstr ""
 
+msgid "Choose a Sound"
+msgstr ""
+
+msgid "Sounds"
+msgstr ""
+
 msgid "Forget this word"
+msgstr ""
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Click"
+msgstr ""
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Hum"
+msgstr ""
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "String"
+msgstr ""
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Swing"
+msgstr ""
+
+msgid "Custom File"
 msgstr ""
 
 msgid "Print Message"
@@ -4378,10 +4525,22 @@ msgstr ""
 msgid "Get Started"
 msgstr ""
 
-msgid "Add your email account"
+msgid "Import your online accounts"
 msgstr ""
 
-msgid "Found in GNOME Online Accounts"
+msgid ""
+"Mail accounts signed in under GNOME Settings → Online Accounts can be added "
+"here in one click. Google and Microsoft accounts are only supported through "
+"Online Accounts."
+msgstr ""
+
+msgid "No mail accounts were found in Online Accounts."
+msgstr ""
+
+msgid "Scan Again"
+msgstr ""
+
+msgid "Add your email account"
 msgstr ""
 
 msgid "Your name"
@@ -4402,14 +4561,6 @@ msgid "IMAP port"
 msgstr ""
 
 msgid "Test & Add"
-msgstr ""
-
-msgid ""
-"Accounts added in GNOME Settings → Online Accounts appear above, IMAP and "
-"SMTP ones included. Google and Microsoft sign in only that way."
-msgstr ""
-
-msgid "Scan Again"
 msgstr ""
 
 msgid "Privacy, your way"
@@ -4475,27 +4626,13 @@ msgid ""
 "please open an issue on our <a href=\"{url}\">Github</a>."
 msgstr ""
 
-msgid "Start Reading"
-msgstr ""
-
-#. Fixed footer: Continue lives with the dots so it never scrolls
-#. away with a tall page. Hidden on the hero and final pages, which
-#. carry their own calls to action.
 msgid "Continue"
 msgstr ""
 
-msgid "Set Up in Settings"
-msgstr ""
-
-msgid ""
-"An OAuth account needs your provider's sign-in details. Settings opens on it "
-"when you finish here."
+msgid "Sign In & Add"
 msgstr ""
 
 msgid "Port"
-msgstr ""
-
-msgid "✓ Settings opens on your OAuth account at the end"
 msgstr ""
 
 msgid "Enter your email address and password first."
@@ -4507,6 +4644,9 @@ msgstr ""
 msgid "✓ {email} — added"
 msgstr ""
 
+msgid "Add another email account"
+msgstr ""
+
 msgid "✓ {email} — connected and added"
 msgstr ""
 
@@ -4514,6 +4654,18 @@ msgid "{email} — mail server: {e}"
 msgstr ""
 
 msgid "{email} — sending (SMTP): {e}"
+msgstr ""
+
+msgid "✓ {email} — signed in and added"
+msgstr ""
+
+msgid "Finish"
+msgstr ""
+
+msgid "Skip"
+msgstr ""
+
+msgid "Enter your email address, the client ID and both OAuth URLs first."
 msgstr ""
 
 msgid "Your mail provider confirmed this really came from {from}."
@@ -4590,6 +4742,9 @@ msgstr ""
 msgid "Still could not send “{subject}”: {e}"
 msgstr ""
 
+msgid "The attachment is no longer in the message on the server"
+msgstr ""
+
 msgid "Could not load message: {e}"
 msgstr ""
 
@@ -4661,7 +4816,24 @@ msgstr ""
 msgid "Could not reach the server"
 msgstr ""
 
+msgid "Removing the attachment…"
+msgstr ""
+
+msgid "Could not remove the attachment: {e}"
+msgstr ""
+
 msgid "That folder is not on the server"
+msgstr ""
+
+msgid "The message is signed or encrypted, and removing a file would break it"
+msgstr ""
+
+msgid "The attachment is the whole message; delete the message instead"
+msgstr ""
+
+msgid ""
+"You deleted an attachment from this message. The original MIME headers for "
+"the attachment were:"
 msgstr ""
 
 msgid "the server's reply could not be read (it began: {reply})"
@@ -4690,6 +4862,11 @@ msgid "Could not tag message: {e}"
 msgstr ""
 
 msgid "Could not mark folder read: {e}"
+msgstr ""
+
+msgid ""
+"Gmail keeps a copy of every message in All Mail, so Hylki cannot remove an "
+"attachment there"
 msgstr ""
 
 msgid "Could not move {len} messages: {e}"
@@ -4735,6 +4912,10 @@ msgid "POP3 accounts don't support folders"
 msgstr ""
 
 msgid "A POP3 account can't receive mail from another account"
+msgstr ""
+
+msgid ""
+"POP3 cannot change a message on the server, so the attachment was not removed"
 msgstr ""
 
 msgid "Inbox"

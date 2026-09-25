@@ -440,6 +440,9 @@ pub struct AppModel {
     draining_composers: Vec<(u32, Controller<Compose>)>,
     /// SlideDown revealer under the reader toolbar that hosts the inline pane.
     reader_compose_revealer: gtk::Revealer,
+    /// The cards files dragged onto the window bring up when no composer is
+    /// open in it, each starting a new message (#293).
+    window_drop_zones: Option<std::rc::Rc<crate::ui::drop_zones::DropZones>>,
     /// Split-reply slot (#86): a reply slides down from the pane's top and
     /// the message(s) stay below it, visible and interactive.
     reader_split_top: gtk::Revealer,
@@ -475,6 +478,8 @@ pub struct AppModel {
     menu: gtk::gio::Menu,
     /// The burger menu's help section, rebuilt when Console mode toggles.
     help_menu: gtk::gio::Menu,
+    /// Whether the status bar is down, so the menu offers to hide it (#294).
+    status_bar_shown: bool,
     /// All known accounts, ordered by id.
     accounts: Vec<Account>,
     /// account_id → that account's folders.
@@ -770,6 +775,11 @@ pub struct AppModel {
     /// first open, not to every one. Bounded — a conversation holds its
     /// messages' bodies, which are not small.
     thread_cache: HashMap<(u32, u32), Vec<Message>>,
+    /// Attachments being deleted from the server (#289), shown as such in
+    /// the drawer and the gallery until the worker answers.
+    deleting_attachments: Vec<AttachmentTarget>,
+    /// Showcase only: answer the next delete question with Delete.
+    showcase_confirm_delete: bool,
     /// Insertion order for `thread_cache`, oldest first.
     thread_cache_order: Vec<(u32, u32)>,
     /// Which conversation `current_thread` is, for storing it back.
@@ -910,6 +920,8 @@ pub struct AppModel {
     /// folder's account.
     compose_default_from: String,
     paste_plain: bool,
+    /// Return starts a new paragraph in the composer; off, a new line.
+    return_paragraph: bool,
     /// New messages start as plain text (#180).
     compose_format: crate::config::ComposeFormat,
     /// Where the split reply opens in the reading pane (#212).
@@ -1066,6 +1078,23 @@ pub enum UnifiedView {
     Kind(FolderKind),
     /// Every filter rule's folder listed under All Inboxes.
     Filtered,
+}
+
+/// One attachment of one message on the server, to be removed (#289).
+#[derive(Debug, Clone)]
+pub struct AttachmentTarget {
+    account_id: u32,
+    message_id: u32,
+    path: String,
+    uid: u32,
+    name: String,
+    size: u64,
+}
+
+impl AttachmentTarget {
+    fn gallery_key(&self) -> crate::ui::attachments_gallery::FileKey {
+        (self.account_id, self.path.clone(), self.uid, self.name.clone())
+    }
 }
 
 #[derive(Debug)]
@@ -1359,6 +1388,7 @@ pub enum AppMsg {
     /// The Settings window showed a category; remembered for reopening.
     SettingsPageShown(String),
     SetPastePlain(bool),
+    SetReturnParagraph(bool),
     SetSpellcheck(bool),
     SetSpellcheckLangs(String),
     /// Show or block remote content for one message, whatever the standing
@@ -1493,6 +1523,25 @@ pub enum AppMsg {
     /// The drawer's "Show in Message": scroll the reader to the message this
     /// attachment came with (#213).
     ShowAttachmentInMessage(Attachment),
+    /// The drawer's "Delete from Server…" (#289): find the message the file
+    /// came with, then ask.
+    DeleteDrawerAttachment(Attachment),
+    /// Ask before an attachment is taken out of its message on the server.
+    AskDeleteAttachment(AttachmentTarget),
+    /// The user said yes: have the account's worker do it.
+    DeleteAttachment(AttachmentTarget),
+    /// Send the request (held back by HYLKI_SHOWCASE_DELETE_HOLD, otherwise
+    /// straight after [`AppMsg::DeleteAttachment`]).
+    SendDeleteAttachment(AttachmentTarget),
+    /// The worker could not delete it: show the file as it was.
+    AttachmentNotDeleted { account_id: u32, message_id: u32, name: String, size: u64 },
+    /// Showcase only (HYLKI_SHOWCASE_DELETE_ATTACHMENT): the drawer's
+    /// Delete from Server for the file called `name`, asking first unless
+    /// `confirmed`.
+    ShowcaseDeleteAttachment { name: String, confirmed: bool },
+    /// The worker did it: the message is `new_uid` now (the same UID on
+    /// Microsoft 365, a new one elsewhere, `None` if it was not found again).
+    AttachmentDeleted { account_id: u32, message_id: u32, path: String, uid: u32, new_uid: Option<u32>, name: String, size: u64 },
     /// Showcase only: turn the inline composer's preview on.
     ShowcaseComposePreview,
     /// Pick entry `n` of the inline composer's From row (#237 capture).
@@ -1552,6 +1601,11 @@ pub enum AppMsg {
     /// Hylki", or the command line): open a fresh composer with them attached
     /// (Isaac's PR #96).
     OpenWithFiles(Vec<std::path::PathBuf>),
+    /// Files dragged onto the main window from a file manager (#293).
+    DropFiles(Vec<std::path::PathBuf>),
+    /// Files let go on one of the main window's cards: a new message with
+    /// them attached, in its text, or uploaded to the cloud.
+    DropFilesAs(crate::ui::drop_zones::DropChoice, Vec<std::path::PathBuf>),
     /// The click on a "message ready" desktop alert: raise the window and
     /// the composer it announced.
     PresentComposers,
@@ -1567,15 +1621,15 @@ pub enum AppMsg {
     DraftSaved,
     /// A composer (id) finished — tear down its host (window or inline revealer).
     ComposeClosed(u32),
+    /// A composer window's close button: the composer decides, as for
+    /// Cancel, whether to ask first (#290).
+    ComposeCloseRequested(u32),
     /// Promote/demote the reader's inline composer (id) between inline and window.
     ComposeToggleWindow(u32),
     Refresh,
     OpenAccounts,
     /// Open the accounts window straight to the "add account" form (empty state).
     AddFirstAccount,
-    /// The welcome wizard handed Custom (OAuth) over: a new account in
-    /// Settings with that provider picked.
-    AddCustomOAuthAccount,
     AccountSaved { original_email: Option<String>, account: Box<AccountConfig> },
     /// Show the keyring / Secret Service setup help. `problem: true` when a save
     /// actually failed to persist; `false` for the proactive one-time tip.
@@ -1725,6 +1779,7 @@ pub enum AppMsg {
     Status { account_id: u32, text: String },
     Error { account_id: u32, text: String, connectivity: bool },
     NotifyCount(usize),
+    StatusBarShown(bool),
     ToggleNotifications,
     OpenContacts,
     /// The background EDS read for the contacts view finished.
@@ -2821,6 +2876,9 @@ impl SimpleComponent for AppModel {
                 crate::ui::attachment_drawer::DrawerOutput::ShowInMessage(att) => {
                     AppMsg::ShowAttachmentInMessage(att)
                 }
+                crate::ui::attachment_drawer::DrawerOutput::DeleteFromServer(att) => {
+                    AppMsg::DeleteDrawerAttachment(att)
+                }
             });
 
         let gallery =
@@ -2833,6 +2891,16 @@ impl SimpleComponent for AppModel {
                     GalleryOutput::Load(req) => AppMsg::GalleryLoad(Box::new(req)),
                     GalleryOutput::Fetch { account_id, folder_path, uid } => {
                         AppMsg::GalleryFetch { account_id, folder_path, uid }
+                    }
+                    GalleryOutput::DeleteFromServer { account_id, folder_path, uid, name, size } => {
+                        AppMsg::AskDeleteAttachment(AttachmentTarget {
+                            account_id,
+                            message_id: uid,
+                            path: folder_path,
+                            uid,
+                            name,
+                            size,
+                        })
                     }
                 });
 
@@ -2878,6 +2946,7 @@ impl SimpleComponent for AppModel {
             |out| match out {
                 NotifyOutput::CountChanged(n) => AppMsg::NotifyCount(n),
                 NotifyOutput::ExportLog => AppMsg::ExportLog,
+                NotifyOutput::Shown(shown) => AppMsg::StatusBarShown(shown),
             },
         );
 
@@ -2998,6 +3067,7 @@ impl SimpleComponent for AppModel {
                 p.add_css_class("reader-split");
                 p
             },
+            window_drop_zones: None,
             reader_compose_revealer: {
                 let r = gtk::Revealer::new();
                 r.set_transition_type(gtk::RevealerTransitionType::SlideDown);
@@ -3009,6 +3079,7 @@ impl SimpleComponent for AppModel {
             next_compose_id: 1,
             menu,
             help_menu,
+            status_bar_shown: false,
             undo_menu: model_undo_menu.clone(),
             accounts: Vec::new(),
             folders: HashMap::new(),
@@ -3190,6 +3261,8 @@ impl SimpleComponent for AppModel {
             thread_related_pending: false,
             thread_painted: false,
             thread_cache: HashMap::new(),
+            deleting_attachments: Vec::new(),
+            showcase_confirm_delete: false,
             thread_cache_order: Vec::new(),
             thread_key: None,
             threads_expanded: config::load_threads_expanded(),
@@ -3268,6 +3341,7 @@ impl SimpleComponent for AppModel {
             reply_fields: config::load_reply_fields(),
             compose_default_from: config::load_compose_default_from(),
             paste_plain: config::load_paste_plain(),
+            return_paragraph: config::load_return_paragraph(),
             compose_format: config::load_compose_format(),
             reply_position: config::load_reply_position(),
             signature_position: config::load_signature_position(),
@@ -4270,6 +4344,29 @@ impl SimpleComponent for AppModel {
                 }
             });
         }
+        // HYLKI_SHOWCASE_DELETE_ATTACHMENT=<name>[:yes] chooses Delete from
+        // Server for that file of the message on screen at 10 s
+        // (HYLKI_SHOWCASE_DELETE_AT overrides the seconds); `:yes` answers
+        // the question as well (#289).
+        // `gallery:<name>` opens the attachments gallery 4 s before and
+        // deletes the file from there.
+        if let Ok(v) = std::env::var("HYLKI_SHOWCASE_DELETE_ATTACHMENT") {
+            let (name, confirmed) = match v.strip_suffix(":yes") {
+                Some(name) => (name.to_string(), true),
+                None => (v, false),
+            };
+            let at: u32 = std::env::var("HYLKI_SHOWCASE_DELETE_AT").ok().and_then(|v| v.parse().ok()).unwrap_or(10);
+            if name.starts_with("gallery:") {
+                let s = sender.clone();
+                gtk::glib::timeout_add_seconds_local_once(at.saturating_sub(4), move || {
+                    s.input(AppMsg::ShowAttachments)
+                });
+            }
+            let s = sender.clone();
+            gtk::glib::timeout_add_seconds_local_once(at, move || {
+                s.input(AppMsg::ShowcaseDeleteAttachment { name, confirmed });
+            });
+        }
         if let Some((a, id)) = std::env::var("HYLKI_SHOWCASE_SELECT").ok().and_then(|v| {
             let (a, id) = v.split_once(':')?;
             Some((a.parse::<u32>().ok()?, id.parse::<u32>().ok()?))
@@ -5095,6 +5192,61 @@ impl SimpleComponent for AppModel {
         }
         for paths in ATTACH_PENDING.lock().unwrap().drain(..) {
             sender.input(AppMsg::OpenWithFiles(paths));
+        }
+
+        // Files dragged onto the window with no composer open in it bring
+        // up the cards for starting a new message with them (#293).
+        {
+            use crate::ui::drop_zones::{DropContext, DropZones};
+            let overlay = root.content().and_downcast::<gtk::Overlay>().expect("the window's content is an overlay");
+            let s = sender.input_sender().clone();
+            let zones = DropZones::install(DropContext::NewMessage, &root, &overlay, move |choice, paths| {
+                s.emit(AppMsg::DropFilesAs(choice, paths));
+            });
+            let slots = [
+                model.reader_compose_revealer.clone(),
+                model.contacts_compose_revealer.clone(),
+                model.reader_split_top.clone(),
+                model.reader_split_bottom.clone(),
+            ];
+            zones.set_gate(move || !slots.iter().any(|slot| slot.reveals_child() && slot.is_visible()));
+            zones.set_refresh(|zones| {
+                zones.set_allow_inline(config::load_compose_format() == config::ComposeFormat::Rich);
+                zones.set_cloud_names(crate::cloud::load_enabled_accounts().into_iter().map(|a| a.name).collect());
+            });
+            // HYLKI_SHOWCASE_WINDOW_DROP=<attach|inline|cloud|none>:<file>[:<file>…]
+            // raises the window's cards at 3 s, for a capture.
+            if let Ok(v) = std::env::var("HYLKI_SHOWCASE_WINDOW_DROP") {
+                let mut parts = std::env::split_paths(&v);
+                let hover = match parts.next().as_deref().and_then(|p| p.to_str()) {
+                    Some("attach") => Some(crate::ui::drop_zones::DropChoice::Attach),
+                    Some("inline") => Some(crate::ui::drop_zones::DropChoice::Inline),
+                    Some("cloud") => Some(crate::ui::drop_zones::DropChoice::Cloud),
+                    _ => None,
+                };
+                let paths: Vec<std::path::PathBuf> = parts.collect();
+                let (zones, host) = (zones.clone(), root.clone().upcast::<gtk::Widget>());
+                gtk::glib::timeout_add_seconds_local_once(3, move || {
+                    zones.set_allow_inline(config::load_compose_format() == config::ComposeFormat::Rich);
+                    zones.set_cloud_names(crate::cloud::load_enabled_accounts().into_iter().map(|a| a.name).collect());
+                    zones.showcase(&paths, &host, hover);
+                });
+            }
+            model.window_drop_zones = Some(zones);
+        }
+        // With a composer open in the window, files dropped anywhere else in
+        // it go into that composer. The reader's web views would take a file
+        // themselves and never pass it up, so the reader gets a target that
+        // goes before them.
+        root.add_controller(window_drop_target(&sender, gtk::PropagationPhase::Bubble));
+        model
+            .message_view
+            .widget()
+            .add_controller(window_drop_target(&sender, gtk::PropagationPhase::Capture));
+        if let Ok(list) = std::env::var("HYLKI_SHOWCASE_DROP") {
+            let paths: Vec<std::path::PathBuf> = std::env::split_paths(&list).collect();
+            let s = sender.clone();
+            gtk::glib::timeout_add_seconds_local_once(3, move || s.input(AppMsg::DropFiles(paths)));
         }
 
         // Send Later (#145): the app's clock. Every half minute, any queued
@@ -7525,6 +7677,109 @@ impl SimpleComponent for AppModel {
                         .emit(MessageViewInput::ScrollToAttachments { account_id, id });
                 }
             }
+            AppMsg::DeleteDrawerAttachment(att) => {
+                if let Some(target) = self.attachment_target(&att.name, Some(att.data.len())) {
+                    sender.input(AppMsg::AskDeleteAttachment(target));
+                }
+            }
+            AppMsg::ShowcaseDeleteAttachment { name, confirmed } => {
+                if let Some(name) = name.strip_prefix("gallery:") {
+                    self.showcase_confirm_delete = confirmed;
+                    self.gallery.emit(GalleryInput::ShowcaseDelete(name.to_string()));
+                    return;
+                }
+                match self.attachment_target(&name, None) {
+                    Some(target) if confirmed => sender.input(AppMsg::DeleteAttachment(target)),
+                    Some(target) => sender.input(AppMsg::AskDeleteAttachment(target)),
+                    None => tracing::warn!("showcase: no attachment called {name:?} on screen"),
+                }
+            }
+            AppMsg::AskDeleteAttachment(target) if std::mem::take(&mut self.showcase_confirm_delete) => {
+                sender.input(AppMsg::DeleteAttachment(target));
+            }
+            AppMsg::AskDeleteAttachment(target) => self.confirm_delete_attachment(target, &sender),
+            AppMsg::DeleteAttachment(t) => {
+                self.attachment_drawer
+                    .emit(AttachmentDrawerInput::MarkDeleting(t.name.clone(), t.size as usize));
+                self.gallery.emit(GalleryInput::SetDeleting(t.gallery_key(), true));
+                self.deleting_attachments.push(t.clone());
+                // HYLKI_SHOWCASE_DELETE_HOLD=<seconds> holds the request back,
+                // so the file can be captured while it is being deleted.
+                if let Some(secs) = std::env::var("HYLKI_SHOWCASE_DELETE_HOLD").ok().and_then(|v| v.parse().ok()) {
+                    let s = sender.clone();
+                    gtk::glib::timeout_add_seconds_local_once(secs, move || {
+                        s.input(AppMsg::SendDeleteAttachment(t));
+                    });
+                    return;
+                }
+                sender.input(AppMsg::SendDeleteAttachment(t));
+            }
+            AppMsg::SendDeleteAttachment(t) => {
+                self.send_to(t.account_id, MailRequest::DeleteAttachment {
+                    message_id: t.message_id,
+                    path: t.path,
+                    uid: t.uid,
+                    name: t.name,
+                    size: t.size,
+                });
+            }
+            AppMsg::AttachmentNotDeleted { account_id, message_id, name, size } => {
+                if let Some(t) = self.take_deleting(account_id, message_id, &name) {
+                    self.gallery.emit(GalleryInput::SetDeleting(t.gallery_key(), false));
+                }
+                self.attachment_drawer.emit(AttachmentDrawerInput::NotDeleted(name, size as usize));
+            }
+            AppMsg::AttachmentDeleted { account_id, message_id, path, uid, new_uid, name, size } => {
+                // The file fades out where it is shown; the lists that
+                // follow wait for it.
+                let t = self.take_deleting(account_id, message_id, &name);
+                self.gallery.emit(GalleryInput::Removed((account_id, path.clone(), uid, name.clone())));
+                self.attachment_drawer.emit(AttachmentDrawerInput::Deleted(
+                    name.clone(),
+                    t.map_or(size, |t| t.size) as usize,
+                ));
+                let key = (account_id, message_id);
+                let members = self.conversation_members();
+                self.thread_cache.retain(|_, members| {
+                    !members.iter().any(|m| (m.account_id, m.id) == key)
+                });
+                self.body_cache.remove(&key);
+                if new_uid == Some(uid) {
+                    // The same message, one file fewer (Microsoft 365): the
+                    // reader drops the file where it stands.
+                    if let Some(mut items) = self.attachment_cache.remove(&key) {
+                        if let Some(at) = items
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, a)| a.name == name)
+                            .min_by_key(|(_, a)| (a.data.len() as u64).abs_diff(size))
+                            .map(|(i, _)| i)
+                        {
+                            items.remove(at);
+                        }
+                        sender.input(AppMsg::Attachments { account_id, message_id, items });
+                    }
+                    return;
+                }
+                // A copy took the message's place under a new UID. The list,
+                // loaded again first, may already have carried the selection
+                // over to it by Message-ID, the files it held with it; if not,
+                // the copy is opened here.
+                self.attachment_cache.remove(&key);
+                let Some(new_uid) = new_uid else { return };
+                let now = (account_id, new_uid);
+                self.attachment_cache.remove(&now);
+                if members.contains(&now) {
+                    self.send_to(account_id, MailRequest::LoadAttachments {
+                        message_id: new_uid,
+                        path,
+                        uid: new_uid,
+                        download: true,
+                    });
+                } else if members.contains(&key) {
+                    self.message_list.emit(MessageListInput::SelectAndLoad(now));
+                }
+            }
             AppMsg::ZoomMessage(step) => {
                 use config::READER_ZOOM_STEPS as STEPS;
                 let at = STEPS.iter().position(|&z| z == self.zoom).unwrap_or(5) as i32;
@@ -7790,6 +8045,13 @@ impl SimpleComponent for AppModel {
                 }
             }
 
+            AppMsg::SetReturnParagraph(on) => {
+                if self.return_paragraph != on {
+                    self.return_paragraph = on;
+                    self.save_settings();
+                }
+            }
+
             AppMsg::SetSpellcheck(on) => {
                 if self.spellcheck != on {
                     self.spellcheck = on;
@@ -8022,6 +8284,45 @@ impl SimpleComponent for AppModel {
                 }
                 self.begin_hand_off(
                     FileHandOff { base: ComposePrefill::default(), files: paths, dropped: Vec::new() },
+                    &sender,
+                );
+            }
+
+            AppMsg::DropFilesAs(choice, paths) => {
+                use crate::ui::drop_zones::DropChoice;
+                tracing::info!("file drop: {} file(s) for a new message ({choice:?})", paths.len());
+                let mut prefill = ComposePrefill::default();
+                match choice {
+                    // The route a drop always took: the size check first.
+                    DropChoice::Attach => {
+                        sender.input(AppMsg::DropFiles(paths));
+                        return;
+                    }
+                    DropChoice::Inline => prefill.inline_files = paths,
+                    DropChoice::Cloud => prefill.cloud_uploads = paths,
+                }
+                self.leave_gallery();
+                let account = self.current.as_ref().map(|m| m.account_id).unwrap_or_else(|| self.active_account());
+                let (account, prefill) = self.new_message_from(account, prefill);
+                if self.compose_inline {
+                    self.open_inline_reply(account, prefill, None, &sender);
+                } else {
+                    self.open_compose(account, prefill, &sender);
+                }
+            }
+
+            AppMsg::DropFiles(paths) => {
+                tracing::info!("file drop: {} file(s)", paths.len());
+                // A composer open in the window is what the files are for,
+                // wherever in the window they were let go.
+                if let Some(r) = self.reader_compose.as_ref().filter(|r| r.window.is_none()) {
+                    r.controller.emit(ComposeInput::AddAttachments(paths));
+                    return;
+                }
+                self.leave_gallery();
+                self.hand_off_size_check(
+                    FileHandOff { base: ComposePrefill::default(), files: paths, dropped: Vec::new() },
+                    HandOffTarget::New,
                     &sender,
                 );
             }
@@ -8294,6 +8595,19 @@ impl SimpleComponent for AppModel {
                 self.message_list.emit(MessageListInput::ReclaimFocus);
             }
 
+            AppMsg::ComposeCloseRequested(id) => {
+                let controller = self
+                    .composers
+                    .iter()
+                    .find(|h| h.id == id)
+                    .map(|h| &h.controller)
+                    .or(self.reader_compose.as_ref().filter(|r| r.id == id).map(|r| &r.controller));
+                match controller {
+                    Some(c) => c.emit(ComposeInput::Cancel),
+                    None => self.close_compose(id),
+                }
+            }
+
             AppMsg::ComposeToggleWindow(id) => self.toggle_compose_window(id, &sender),
 
             AppMsg::Sent { account_id } => {
@@ -8323,13 +8637,6 @@ impl SimpleComponent for AppModel {
             AppMsg::OpenAccounts => self.open_settings_window(&sender, true, false),
 
             AppMsg::AddFirstAccount => self.open_settings_window(&sender, true, true),
-            AppMsg::AddCustomOAuthAccount => {
-                self.open_settings_window(&sender, true, false);
-                if let Some(a) = &self.accounts_win {
-                    a.emit(crate::ui::accounts::AccountsInput::AddCustomOAuthAccount);
-                }
-            }
-
             AppMsg::AccountSaved { original_email, account } => {
                 // Whether the account joined or left the unified section
                 // (#267): the merged views open now are redrawn without it.
@@ -10188,7 +10495,11 @@ impl SimpleComponent for AppModel {
             }
 
             AppMsg::NotifyCount(n) => self.notify_count = n,
-            AppMsg::ToggleNotifications => self.notifications.emit(NotifyInput::TogglePanel),
+            AppMsg::ToggleNotifications => self.notifications.emit(NotifyInput::ToggleBar),
+            AppMsg::StatusBarShown(shown) => {
+                self.status_bar_shown = shown;
+                self.rebuild_help_menu();
+            }
 
             AppMsg::OpenContacts => {
                 self.close_sidebar_peek();
@@ -10475,7 +10786,8 @@ impl AppModel {
     /// only while Console mode is enabled in Settings.
     fn rebuild_help_menu(&self) {
         self.help_menu.remove_all();
-        self.help_menu.append(Some(i18n("Reveal Status Bar").as_str()), Some("win.status-bar"));
+        let status_bar = if self.status_bar_shown { i18n("Hide Status Bar") } else { i18n("Reveal Status Bar") };
+        self.help_menu.append(Some(status_bar.as_str()), Some("win.status-bar"));
         if self.console_mode {
             self.help_menu.append(Some(i18n("Console").as_str()), Some("win.console"));
         }
@@ -10567,6 +10879,7 @@ impl AppModel {
             self.reply_fields,
             &self.compose_default_from,
             self.paste_plain,
+            self.return_paragraph,
             self.compose_format,
             self.reply_position,
             self.signature_position,
@@ -11892,7 +12205,6 @@ impl AppModel {
                 WelcomeOutput::Prefs(p) => AppMsg::ApplyWelcomePrefs(p),
                 WelcomeOutput::Done => AppMsg::PresentWindow,
                 WelcomeOutput::Language(code) => AppMsg::WizardLanguage(code),
-                WelcomeOutput::SetUpCustomOAuth => AppMsg::AddCustomOAuthAccount,
             });
         welcome.widget().set_transient_for(Some(&self.window));
         welcome.widget().set_modal(true);
@@ -13996,6 +14308,7 @@ impl AppModel {
             from_address: String::new(),
             send_at: item.send_at,
             cloud_uploads: Vec::new(),
+            inline_files: Vec::new(),
         };
         // The Outbox stays the folder on screen: its list is still what's listed,
         // so its toolbar has to stay too. Leaving it would strand the user in a
@@ -14334,8 +14647,8 @@ impl AppModel {
         win.set_content(Some(content));
         let s = sender.input_sender().clone();
         win.connect_close_request(move |_| {
-            let _ = s.send(AppMsg::ComposeClosed(id));
-            gtk::glib::Propagation::Proceed
+            let _ = s.send(AppMsg::ComposeCloseRequested(id));
+            gtk::glib::Propagation::Stop
         });
         win.connect_is_active_notify(|w| {
             if w.is_active() {
@@ -15349,6 +15662,59 @@ impl AppModel {
             if resp == "delete" {
                 if let Some(msgs) = messages.borrow_mut().take() {
                     s.input(AppMsg::DeleteThreadConfirmed(msgs));
+                }
+            }
+        });
+        dialog.present();
+    }
+
+    /// The message on screen that carries the attachment `name` (of `len`
+    /// bytes, when known), as the drawer's Show in Message finds it.
+    fn attachment_target(&self, name: &str, len: Option<usize>) -> Option<AttachmentTarget> {
+        let (m, size) = self.current_thread.iter().chain(self.current.iter()).find_map(|m| {
+            let items = self.attachment_cache.get(&(m.account_id, m.id))?;
+            let a = items.iter().find(|a| a.name == name && len.is_none_or(|l| a.data.len() == l))?;
+            Some((m, a.data.len() as u64))
+        })?;
+        Some(AttachmentTarget {
+            account_id: m.account_id,
+            message_id: m.id,
+            path: self.resolve_folder_path(m)?,
+            uid: m.uid,
+            name: name.to_string(),
+            size,
+        })
+    }
+
+    /// Forget a deletion the worker has answered, handing back what it was.
+    fn take_deleting(&mut self, account_id: u32, message_id: u32, name: &str) -> Option<AttachmentTarget> {
+        let at = self
+            .deleting_attachments
+            .iter()
+            .position(|t| t.account_id == account_id && t.message_id == message_id && t.name == name)?;
+        Some(self.deleting_attachments.remove(at))
+    }
+
+    /// Removing an attachment cannot be undone, and reaches every device
+    /// that reads the account: ask (#289).
+    fn confirm_delete_attachment(&self, target: AttachmentTarget, sender: &ComponentSender<Self>) {
+        let heading = i18n("Delete the attachment from the server?");
+        let body = i18n_f(
+            "“{name}” will be removed from the message on the server. The rest of the message stays. This can’t be undone.",
+            &[("name", &target.name)],
+        );
+        let dialog = adw::MessageDialog::new(Some(&self.window), Some(&heading), Some(&body));
+        dialog.add_response("cancel", &i18n("Cancel"));
+        dialog.add_response("delete", &i18n("Delete"));
+        dialog.set_default_response(Some("cancel"));
+        dialog.set_close_response("cancel");
+        dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+        let s = sender.clone();
+        let target = std::cell::RefCell::new(Some(target));
+        dialog.connect_response(None, move |_, resp| {
+            if resp == "delete" {
+                if let Some(t) = target.borrow_mut().take() {
+                    s.input(AppMsg::DeleteAttachment(t));
                 }
             }
         });
@@ -16898,6 +17264,7 @@ impl AppModel {
             link_browser: self.link_browser.clone(),
             compose_default_from: self.compose_default_from.clone(),
             paste_plain: self.paste_plain,
+            return_paragraph: self.return_paragraph,
             spellcheck: self.spellcheck,
             spellcheck_langs: self.spellcheck_langs.clone(),
             app_theme: self.app_theme,
@@ -16977,6 +17344,7 @@ impl AppModel {
                 PrefOutput::SetLinkBrowser(id) => AppMsg::SetLinkBrowser(id),
                 PrefOutput::SetComposeDefaultFrom(addr) => AppMsg::SetComposeDefaultFrom(addr),
                 PrefOutput::SetPastePlain(on) => AppMsg::SetPastePlain(on),
+                PrefOutput::SetReturnParagraph(on) => AppMsg::SetReturnParagraph(on),
                 PrefOutput::SetSpellcheck(on) => AppMsg::SetSpellcheck(on),
                 PrefOutput::SetSpellcheckLangs(l) => AppMsg::SetSpellcheckLangs(l),
                 PrefOutput::SetFetchInterval(secs) => AppMsg::SetFetchInterval(secs),
@@ -18855,6 +19223,14 @@ impl AppModel {
                     tracing::warn!("one-click unsubscribe failed ({why}); writing to the list instead");
                     s.input(AppMsg::UnsubscribeByMail { message, info });
                 }
+                // The one-click handle is the list's web page as well: a
+                // POST it refused (a redirect, most often) may still work
+                // in the browser, which is the last route anyway.
+                Err(why) if info.web.is_some() => {
+                    tracing::warn!("one-click unsubscribe failed ({why}); opening the list's page instead");
+                    let info = Box::new(crate::models::Unsubscribe { one_click: None, ..*info });
+                    s.input(AppMsg::UnsubscribeGo { message, info });
+                }
                 Err(why) => s.input(AppMsg::UnsubscribeDone { message, result: Err(why) }),
             });
             return;
@@ -20325,6 +20701,9 @@ fn register_icons() {
     {
         settings.set_gtk_icon_theme_name(Some(&name));
     }
+    if let Some(display) = gtk::gdk::Display::default() {
+        crate::icon_fallback::install(&display);
+    }
     gtk::Window::set_default_icon_name(crate::APP_ID);
 }
 
@@ -20475,6 +20854,12 @@ fn map_event(account_id: u32, event: WorkerEvent) -> AppMsg {
         WorkerEvent::MovesSettled { path, uids } => AppMsg::MovesSettled { account_id, path, uids },
         WorkerEvent::RawExported { token, raw } => AppMsg::RawExported { token, raw },
         WorkerEvent::RawImported { token, result } => AppMsg::RawImported { token, result },
+        WorkerEvent::AttachmentDeleted { message_id, path, uid, new_uid, name, size } => {
+            AppMsg::AttachmentDeleted { account_id, message_id, path, uid, new_uid, name, size }
+        }
+        WorkerEvent::AttachmentNotDeleted { message_id, name, size } => {
+            AppMsg::AttachmentNotDeleted { account_id, message_id, name, size }
+        }
         WorkerEvent::Gone { message_id, path, uid } => {
             AppMsg::MessageGone { account_id, message_id, path, uid }
         }
@@ -20746,6 +21131,24 @@ fn show_message_picker(
         }
     });
     dialog.present();
+}
+
+/// Files dropped on the main window, for [`AppMsg::DropFiles`]. Folders
+/// are passed over: there is nothing to attach.
+fn window_drop_target(sender: &ComponentSender<AppModel>, phase: gtk::PropagationPhase) -> gtk::DropTarget {
+    let drop = gtk::DropTarget::new(gtk::gdk::FileList::static_type(), gtk::gdk::DragAction::COPY);
+    drop.set_propagation_phase(phase);
+    let s = sender.input_sender().clone();
+    drop.connect_drop(move |_, value, _, _| {
+        let Ok(list) = value.get::<gtk::gdk::FileList>() else { return false };
+        let paths: Vec<_> = list.files().iter().filter_map(|f| f.path()).filter(|p| p.is_file()).collect();
+        if paths.is_empty() {
+            return false;
+        }
+        s.emit(AppMsg::DropFiles(paths));
+        true
+    });
+    drop
 }
 
 fn reply_prefill(m: &Message) -> ComposePrefill {
