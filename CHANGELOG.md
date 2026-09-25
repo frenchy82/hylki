@@ -1,9 +1,9 @@
 # Changelog
 
-## 1.42.0-beta.1 — 2026-09-24
+## 1.42.0-beta.2 — 2026-09-25
 
-The first beta on the new schedule (#277): betas carry what is on main,
-and a stable 1.x.0 follows about once a week. This one previews 1.42.0.
+The second beta previewing 1.42.0, with what main has gained since
+1.42.0-beta.1.
 
 - **New: a choice of what Return does in the composer.** In rich text,
   Return starts a new line in the same paragraph and Shift+Return starts a
@@ -67,11 +67,6 @@ and a stable 1.x.0 follows about once a week. This one previews 1.42.0.
 - **Translations:** French (PR #281 by frenchy82), Spanish (PR #287 by
   Daniel Miguel), Portuguese and Brazilian Portuguese (PR #280 by Paulo
   Fino) and Greek (PR #291 by Yiannis Ioannides) brought up to date.
-- **Changed: JMAP is set up through the Stalwart (JMAP) provider only.**
-  The Incoming Protocol row of an IMAP/POP3 account offers IMAP and POP3,
-  and is hidden for Stalwart, whose protocol is always JMAP. Accounts
-  already on JMAP open under Stalwart as before. Custom (OAuth) moves up
-  the Provider list to sit under IMAP/POP3 Account.
 - **Changed: the welcome wizard imports from GNOME Online Accounts on a page
   of its own.** The first account page lists the mail accounts in GNOME
   Settings → Online Accounts, Google and Microsoft included, and can be
@@ -81,6 +76,28 @@ and a stable 1.x.0 follows about once a week. This one previews 1.42.0.
   adds the account; its title reads "Add another email account" after an
   import. Either page's button reads Skip until something is added or, on
   the second, typed. The last page's button reads Finish.
+- **Fixed: some icons showed as a broken image on KDE and other desktops**
+  (#278). Since 1.41.0 the icon theme draws Hylki's icons, and inside the
+  Flatpak a theme can list a file the sandbox cannot open, typically a
+  symlink into the host's `/usr/share/icons`. GTK drew its placeholder for
+  those and never fell back to the bundled copy. Hylki now looks up each
+  icon it carries in the theme once the window is up, and again when the
+  theme changes, and swaps in its own copy for every file that cannot be
+  read, leaving the rest of the theme in place.
+
+## 1.42.0-beta.1 — 2026-09-24
+
+The first beta on the new schedule (#277): betas carry what is on main,
+and a stable 1.x.0 follows about once a week. This one previews 1.42.0.
+
+- **Changed: JMAP is set up through the Stalwart (JMAP) provider only.**
+  The Incoming Protocol row of an IMAP/POP3 account offers IMAP and POP3,
+  and is hidden for Stalwart, whose protocol is always JMAP. Accounts
+  already on JMAP open under Stalwart as before. Custom (OAuth) moves up
+  the Provider list to sit under IMAP/POP3 Account, and the welcome
+  wizard lists it too: choosing it there opens Settings on a new OAuth
+  account when the wizard finishes, since its sign-in details are only
+  in the account editor.
 - **Changed: Mail Accounts marks an account with no provider logo by how it
   connects** (#277): a blue IMAP, red POP3 or yellow OAuth tile in place
   of the blue and yellow envelopes, in the account list, the Provider
@@ -110,14 +127,6 @@ and a stable 1.x.0 follows about once a week. This one previews 1.42.0.
   down and published again for each, with the settings file written each
   time. Cinnamon's status applet crashed on the churn. A row now reports
   only a change made after the window is built.
-- **Fixed: some icons showed as a broken image on KDE and other desktops**
-  (#278). Since 1.41.0 the icon theme draws Hylki's icons, and inside the
-  Flatpak a theme can list a file the sandbox cannot open, typically a
-  symlink into the host's `/usr/share/icons`. GTK drew its placeholder for
-  those and never fell back to the bundled copy. Hylki now looks up each
-  icon it carries in the theme once the window is up, and again when the
-  theme changes, and swaps in its own copy for every file that cannot be
-  read, leaving the rest of the theme in place.
 
 ## 1.41.2-beta.1 — 2026-09-23
 

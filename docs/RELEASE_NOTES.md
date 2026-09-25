@@ -2,6 +2,28 @@
 
 Hylki (formerly Vireo) is a clean, fast, GNOME-native email client built with Rust and libadwaita for Wayland desktops. Privacy-first: no telemetry, remote content blocked by default, and credentials kept in the system keyring.
 
+## What's new in 1.42.0-beta.2
+
+The second beta previewing 1.42.0.
+
+- **A sound for new mail** (#292): Settings > General > Sound for new
+  mail, off by default. Pick one of GNOME's four alert sounds or a file
+  of your own.
+- **Drag files onto the window** (#293): cards offer to attach them,
+  insert pictures in the text or upload them to cloud storage, in an open
+  composer or in a new message.
+- **Delete an attachment from the server** (#289): Delete from Server…
+  in a file's right-click menu stores the message again without it.
+- **Return and Shift+Return:** in rich text, Return starts a new line and
+  Shift+Return a new paragraph. Settings > Composing swaps them.
+- **Online Accounts on a page of its own** in the welcome wizard, and
+  Custom (OAuth) accounts are added there directly.
+- **Fixed:** Escape closing a written message without asking (#290), the
+  status bar menu item (#294), Unsubscribe reporting success when a list
+  redirected the request (#284), and broken theme icons on KDE and other
+  desktops (#278).
+- **Translations:** French, Spanish, Portuguese and Greek updated.
+
 ## What's new in 1.42.0-beta.1
 
 The first beta on the new schedule: betas now carry what is on main, and
