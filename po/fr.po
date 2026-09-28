@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: hylki\n"
 "Report-Msgid-Bugs-To: https://github.com/hyprlab/hylki/issues\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2026-09-24 18:30+0200\n"
+"PO-Revision-Date: 2026-09-28 18:38+0200\n"
 "Last-Translator: cartes <cartes341@free.fr>\n"
 "Language-Team: French\n"
 "Language: fr\n"
@@ -257,6 +257,9 @@ msgstr "Aucun carnet d'adresses disponible"
 msgid "Could not update contact: {e}"
 msgstr "Impossible de mettre à jour le contact : {e}"
 
+msgid "Hide Status Bar"
+msgstr "Masquer la barre d'état"
+
 msgid "Reveal Status Bar"
 msgstr "Afficher la barre d'état"
 
@@ -450,6 +453,16 @@ msgstr "Supprimer cette conversation ?"
 
 msgid "Delete Conversation"
 msgstr "Supprimer la conversation"
+
+msgid "Delete the attachment from the server?"
+msgstr "Supprimer la pièce jointe du serveur ?"
+
+msgid ""
+"“{name}” will be removed from the message on the server. The rest of the "
+"message stays. This can’t be undone."
+msgstr ""
+"« {name} » sera retiré du message sur le serveur. Le reste du message est "
+"conservé. Cette action est irréversible."
 
 msgid "Delete this message permanently?"
 msgid_plural "Delete {n} messages permanently?"
@@ -935,6 +948,18 @@ msgid_plural "{n} unread messages"
 msgstr[0] "{n} message non lu"
 msgstr[1] "{n} messages non lus"
 
+msgid "Custom Order"
+msgstr "Ordre personnalisé"
+
+msgid "Name (A to Z)"
+msgstr "Nom (A à Z)"
+
+msgid "Name (Z to A)"
+msgstr "Nom (Z à A)"
+
+msgid "Full Path"
+msgstr "Chemin complet"
+
 msgid "Spam"
 msgstr "Spam"
 
@@ -958,6 +983,23 @@ msgstr "Carnet d'adresses CardDAV"
 
 msgid "{date} at {time}"
 msgstr "{date} à {time}"
+
+msgid "Evolution Data Server is not available"
+msgstr "Evolution Data Server n'est pas disponible"
+
+msgid "The directory needs a password. Add it in Settings → LDAP Directories."
+msgstr ""
+"L'annuaire nécessite un mot de passe. Ajoutez-le dans Paramètres → Annuaires "
+"LDAP."
+
+msgid "The directory did not accept the password."
+msgstr "L'annuaire n'a pas accepté le mot de passe."
+
+msgid "{used} of {limit} used"
+msgstr "{used} sur {limit} utilisés"
+
+msgid "{free} free ({pct}%)"
+msgstr "{free} libres ({pct} %)"
 
 msgid "Encrypted message"
 msgstr "Message chiffré"
@@ -1009,6 +1051,39 @@ msgstr "Signé par {signer} avec une clé révoquée"
 
 msgid "Signed by {signer}; the signature has expired"
 msgstr "Signé par {signer} ; la signature a expiré"
+
+msgid "Not decrypted"
+msgstr "Non déchiffré"
+
+msgid "Encrypted"
+msgstr "Chiffré"
+
+msgid "Signature not checked"
+msgstr "Signature non vérifiée"
+
+msgid "Encrypted and signed"
+msgstr "Chiffré et signé"
+
+msgid "Signed"
+msgstr "Signé"
+
+msgid "Signed, key not trusted"
+msgstr "Signé, clé non fiable"
+
+msgid "Bad signature"
+msgstr "Signature invalide"
+
+msgid "Signed, unknown key"
+msgstr "Signé, clé inconnue"
+
+msgid "Signed, key expired"
+msgstr "Signé, clé expirée"
+
+msgid "Signed, key revoked"
+msgstr "Signé, clé révoquée"
+
+msgid "Signature expired"
+msgstr "Signature expirée"
 
 msgid "This message hasn't been checked."
 msgstr "Ce message n'a pas été vérifié."
@@ -1297,6 +1372,9 @@ msgstr ""
 msgid "Open Online Accounts…"
 msgstr "Ouvrir Comptes en ligne…"
 
+msgid "Storage"
+msgstr "Stockage"
+
 msgid "Mail Account"
 msgstr "Compte e-mail"
 
@@ -1396,6 +1474,17 @@ msgstr ""
 "sur un hébergement mutualisé. Activez cette option uniquement si le test de "
 "connexion signale que les noms diffèrent."
 
+msgid "Show in All Inboxes"
+msgstr "Afficher dans Toutes les boîtes de réception"
+
+msgid ""
+"Include this account's mail in the unified Inboxes, Starred, Sent, Drafts "
+"and Archive, and in the unified Filters and Tags."
+msgstr ""
+"Inclure le courrier de ce compte dans les boîtes de réception, favoris, "
+"envoyés, brouillons et archives unifiés, ainsi que dans les filtres et "
+"étiquettes unifiés."
+
 msgid "Test Connection"
 msgstr "Tester la connexion"
 
@@ -1454,17 +1543,6 @@ msgstr "Utiliser les initiales"
 msgid "A photo or logo from this computer"
 msgstr "Une photo ou un logo depuis cet ordinateur"
 
-msgid "Show in All Inboxes"
-msgstr "Afficher dans Toutes les boîtes de réception"
-
-msgid ""
-"Include this account's mail in the unified Inboxes, Starred, Sent, Drafts "
-"and Archive, and in the unified Filters and Tags."
-msgstr ""
-"Inclure le courrier de ce compte dans les boîtes de réception, favoris, "
-"envoyés, brouillons et archives unifiés, ainsi que dans les filtres et "
-"étiquettes unifiés."
-
 msgid "Send-as aliases"
 msgstr "Alias d'expédition"
 
@@ -1515,6 +1593,19 @@ msgid ""
 msgstr ""
 "Supprimer définitivement les e-mails de la corbeille datant d'avant cette "
 "date, vérification à chaque synchronisation."
+
+msgid "Folder Order"
+msgstr "Ordre des dossiers"
+
+msgid ""
+"How this account's folders are sorted in the sidebar. Also in the right-"
+"click menu of its Folders heading."
+msgstr ""
+"Comment les dossiers de ce compte sont triés dans la barre latérale. "
+"Également dans le menu contextuel de son en-tête Dossiers."
+
+msgid "Sort by"
+msgstr "Trier par"
 
 msgid "Special Folders"
 msgstr "Dossiers spéciaux"
@@ -2010,6 +2101,9 @@ msgstr "Impossible d'importer la clé"
 msgid "Show in Message"
 msgstr "Afficher dans le message"
 
+msgid "Delete from Server…"
+msgstr "Supprimer du serveur…"
+
 msgid "Import OpenPGP key"
 msgstr "Importer une clé OpenPGP"
 
@@ -2115,6 +2209,9 @@ msgstr "Aller au message"
 
 msgid "All accounts"
 msgstr "Tous les comptes"
+
+msgid "Deleting…"
+msgstr "Suppression…"
 
 #. Deliberately counts messages, not attachments: until a message has
 #. been described there is no telling how many files it holds.
@@ -2633,6 +2730,20 @@ msgstr "{name} (lien)"
 msgid "Uploading…"
 msgstr "Téléversement…"
 
+msgid "Save the message?"
+msgstr "Enregistrer le message ?"
+
+msgid "It has not been sent. Save it to Drafts to finish later, or discard it."
+msgstr ""
+"Il n'a pas été envoyé. Enregistrez-le dans Brouillons pour le terminer plus "
+"tard, ou abandonnez-le."
+
+msgid "Keep Editing"
+msgstr "Continuer la modification"
+
+msgid "Discard"
+msgstr "Ignorer"
+
 msgid "Upload {n} file and put its share link in the message."
 msgid_plural "Upload {n} files and put their share links in the message."
 msgstr[0] ""
@@ -2739,6 +2850,173 @@ msgstr "Ajouter un numéro de téléphone"
 msgid "Add website"
 msgstr "Ajouter un site web"
 
+msgid "LDAP Directories"
+msgstr "Annuaires LDAP"
+
+msgid "LDAP directories"
+msgstr "Annuaires LDAP"
+
+msgid ""
+"The composer looks up recipients in these directories as you type an "
+"address. They are kept by Evolution Data Server, so a directory set up in "
+"Evolution is listed here too."
+msgstr ""
+"Le compositeur recherche les destinataires dans ces annuaires pendant que "
+"vous saisissez une adresse. Ils sont gérés par Evolution Data Server ; un "
+"annuaire configuré dans Evolution est donc également répertorié ici."
+
+msgid "Add Directory…"
+msgstr "Ajouter un annuaire…"
+
+msgid "No directories yet."
+msgstr "Aucun annuaire pour le moment."
+
+msgid "LDAP Directory"
+msgstr "Annuaire LDAP"
+
+msgid ""
+"Evolution Data Server, which keeps the directories, is not available on this "
+"system."
+msgstr ""
+"Evolution Data Server, qui gère les annuaires, n'est pas disponible sur ce "
+"système."
+
+msgid ""
+"The directory is removed from Evolution Data Server, so Evolution and other "
+"apps that use it stop seeing it too. Nothing on the server changes."
+msgstr ""
+"L'annuaire est supprimé d'Evolution Data Server ; Evolution et les autres "
+"applications qui l'utilisent cessent donc également de le voir. Rien ne "
+"change sur le serveur."
+
+msgid "Connected to {name}"
+msgstr "Connecté à {name}"
+
+msgid "{name} did not answer: {error}"
+msgstr "{name} n'a pas répondu : {error}"
+
+msgid "Edit Directory"
+msgstr "Modifier l'annuaire"
+
+msgid "Add Directory"
+msgstr "Ajouter un annuaire"
+
+msgid "Look up recipients in this directory"
+msgstr "Rechercher les destinataires dans cet annuaire"
+
+msgid "Server"
+msgstr "Serveur"
+
+msgid "Encryption"
+msgstr "Chiffrement"
+
+msgid "StartTLS"
+msgstr "StartTLS"
+
+msgid "TLS (LDAPS)"
+msgstr "TLS (LDAPS)"
+
+msgid "Port"
+msgstr "Port"
+
+msgid "Search base, such as dc=example,dc=com"
+msgstr "Base de recherche, par exemple dc=example,dc=com"
+
+msgid "Whole tree"
+msgstr "Arborescence complète"
+
+msgid "First level"
+msgstr "Premier niveau"
+
+msgid "Sign-in"
+msgstr "Connexion"
+
+msgid ""
+"Leave these empty for a directory that can be searched without signing in."
+msgstr "Laissez ces champs vides pour un annuaire consultable sans connexion."
+
+msgid "Sign in as, such as cn=jane,ou=people,dc=example,dc=com"
+msgstr ""
+"Se connecter en tant que, par exemple cn=jane,ou=people,dc=example,dc=com"
+
+msgid "Password (saved; type to replace it)"
+msgstr "Mot de passe (enregistré ; saisissez-en un pour le remplacer)"
+
+msgid "Enter the directory's server."
+msgstr "Indiquez le serveur de l'annuaire."
+
+msgid "Attach"
+msgstr "Joindre"
+
+msgid "Insert in Text"
+msgstr "Insérer dans le texte"
+
+msgid "Upload to Cloud"
+msgstr "Téléverser vers le stockage en ligne"
+
+msgid "Attach to New Message"
+msgstr "Joindre à un nouveau message"
+
+msgid "Insert in New Message"
+msgstr "Insérer dans un nouveau message"
+
+msgid "Share Link in New Message"
+msgid_plural "Share Links in New Message"
+msgstr[0] "Partager un lien dans un nouveau message"
+msgstr[1] "Partager des liens dans un nouveau message"
+
+msgid "{n} file · {size}"
+msgid_plural "{n} files · {size}"
+msgstr[0] "{n} fichier · {size}"
+msgstr[1] "{n} fichiers · {size}"
+
+msgid "Send as a normal attachment"
+msgid_plural "Send as normal attachments"
+msgstr[0] "Envoyer comme une pièce jointe normale"
+msgstr[1] "Envoyer comme des pièces jointes normales"
+
+msgid "Place the picture where the cursor is"
+msgid_plural "Place the pictures where the cursor is"
+msgstr[0] "Placer l'image à l'emplacement du curseur"
+msgstr[1] "Placer les images à l'emplacement du curseur"
+
+msgid "Pictures insert where the cursor is placed, other files attach normally"
+msgstr ""
+"Les images s'insèrent à l'emplacement du curseur, les autres fichiers sont "
+"joints normalement"
+
+msgid "Share a download link from {name}"
+msgstr "Partager un lien de téléchargement depuis {name}"
+
+msgid "Share a download link"
+msgstr "Partager un lien de téléchargement"
+
+msgid "Start a message with the file attached"
+msgid_plural "Start a message with the files attached"
+msgstr[0] "Rédiger un message avec le fichier joint"
+msgstr[1] "Rédiger un message avec les fichiers joints"
+
+msgid "Start a message with the picture in the text"
+msgid_plural "Start a message with the pictures in the text"
+msgstr[0] "Rédiger un message avec l'image dans le texte"
+msgstr[1] "Rédiger un message avec les images dans le texte"
+
+msgid ""
+"Start a message with the pictures in the text and the other files attached"
+msgstr ""
+"Rédiger un message avec les images dans le texte et les autres fichiers "
+"joints"
+
+msgid "Start a message with a download link from {name}"
+msgid_plural "Start a message with download links from {name}"
+msgstr[0] "Rédiger un message avec un lien de téléchargement depuis {name}"
+msgstr[1] "Rédiger un message avec des liens de téléchargement depuis {name}"
+
+msgid "Start a message with a download link"
+msgid_plural "Start a message with download links"
+msgstr[0] "Rédiger un message avec un lien de téléchargement"
+msgstr[1] "Rédiger un message avec des liens de téléchargement"
+
 msgid "Whole conversation"
 msgstr "Conversation entière"
 
@@ -2831,6 +3109,15 @@ msgstr "Le désabonnement a échoué : {why}"
 
 msgid "Try Again"
 msgstr "Réessayer"
+
+#. Mail sent well after the request means the list did not
+#. act on it, or that the List-Id covers more than the one
+#. list that was left (#284); the banner must not say
+#. "unsubscribed" over the proof that it was not.
+msgid "You unsubscribed on {date}, but this list is still sending mail."
+msgstr ""
+"Vous vous êtes désabonné le {date}, mais cette liste continue d'envoyer des "
+"messages."
 
 msgid "You unsubscribed from this list on {date}."
 msgstr "Vous vous êtes désabonné(e) de cette liste le {date}."
@@ -3138,6 +3425,24 @@ msgstr "La clé de l'expéditeur a été récupérée et importée."
 
 msgid "The sender's key was already in your keyring."
 msgstr "La clé de l'expéditeur figurait déjà dans votre trousseau de clés."
+
+msgid "Open Link"
+msgstr "Ouvrir le lien"
+
+msgid "Copy Email Address"
+msgstr "Copier l'adresse e-mail"
+
+msgid "Copy Link Address"
+msgstr "Copier l'adresse du lien"
+
+msgid "Save Image As…"
+msgstr "Enregistrer l'image sous…"
+
+msgid "Copy Image"
+msgstr "Copier l'image"
+
+msgid "Copy Image Address"
+msgstr "Copier l'adresse de l'image"
 
 msgid "Load attachments from server"
 msgstr "Charger les pièces jointes depuis le serveur"
@@ -3547,6 +3852,16 @@ msgstr ""
 "L'éditeur de tag est ouvert. Enregistrez vos modifications, ou annulez-les, "
 "avant de continuer."
 
+msgid "Save the directory?"
+msgstr "Enregistrer l'annuaire ?"
+
+msgid ""
+"The directory editor is open. Save what you changed, or discard it, before "
+"moving on."
+msgstr ""
+"L'éditeur d'annuaire est ouvert. Enregistrez vos modifications, ou annulez-"
+"les, avant de continuer."
+
 msgid "Save the account?"
 msgstr "Enregistrer le compte ?"
 
@@ -3556,9 +3871,6 @@ msgid ""
 msgstr ""
 "L'éditeur de compte est ouvert. Enregistrez vos modifications ou annulez-les "
 "avant de continuer."
-
-msgid "Discard"
-msgstr "Ignorer"
 
 msgid "Check for new mail"
 msgstr "Vérifier s'il y a de nouveaux messages"
@@ -3581,6 +3893,18 @@ msgstr ""
 
 msgid "Show sender and subject"
 msgstr "Afficher l'expéditeur et l'objet"
+
+msgid "Sound for new mail"
+msgstr "Son pour les nouveaux messages"
+
+msgid "Sound"
+msgstr "Son"
+
+msgid "Play"
+msgstr "Lire"
+
+msgid "Sound file"
+msgstr "Fichier son"
 
 msgid "Notification Buttons"
 msgstr "Boutons de notification"
@@ -3769,6 +4093,18 @@ msgstr ""
 "La section propre à chaque compte : ses dossiers, ses dossiers filtrés et "
 "ses tags. Désactivé, seule la section unifiée reste affichée. Également "
 "disponible dans le menu principal, et via Ctrl+Maj+A."
+
+msgid "Folder order"
+msgstr "Ordre des dossiers"
+
+msgid ""
+"How each account's folders are sorted. Dragging a folder puts that account "
+"in Custom Order. An account can choose its own in its settings, or from the "
+"right-click menu of its Folders heading."
+msgstr ""
+"Comment les dossiers de chaque compte sont triés. Faire glisser un dossier "
+"place ce compte en Ordre personnalisé. Un compte peut choisir son propre tri "
+"dans ses paramètres, ou depuis le menu contextuel de son en-tête Dossiers."
 
 msgid "Chevron placement"
 msgstr "Emplacement des chevrons"
@@ -4273,6 +4609,17 @@ msgstr ""
 "cliquer sur le bouton des destinataires. S'il n'y a qu'un destinataire, le "
 "bouton disparaît complètement."
 
+msgid "Name the OpenPGP result"
+msgstr "Nommer le résultat OpenPGP"
+
+msgid ""
+"Beside the sender, say in words whether a message is signed or encrypted and "
+"whether it checks out. Off shows the lock and shield icons alone."
+msgstr ""
+"À côté de l'expéditeur, indiquer en toutes lettres si un message est signé "
+"ou chiffré et si la vérification est concluante. Désactivé n'affiche que les "
+"icônes de cadenas et de bouclier."
+
 msgid "Reader View switch"
 msgstr "Commutateur du mode Lecture"
 
@@ -4301,6 +4648,16 @@ msgstr ""
 "Un nouveau message s'affiche en bas de la fenêtre de lecture, comme une "
 "réponse — détachez-le dans une fenêtre distincte depuis son en-tête. "
 "Désactivé = ouvre directement une fenêtre séparée."
+
+msgid "Reply and forward in the main window"
+msgstr "Répondre et transférer dans la fenêtre principale"
+
+msgid ""
+"A reply or a forward opens in the reading pane, beside the message it "
+"answers. Off = open a separate window."
+msgstr ""
+"Une réponse ou un transfert s'ouvre dans le panneau de lecture, à côté du "
+"message concerné. Désactivé = ouvrir une fenêtre séparée."
 
 msgid "Show From, To and Subject in the reply panel"
 msgstr ""
@@ -4332,6 +4689,18 @@ msgstr ""
 "Désactivé, le collage conserve sa mise en forme. Un clic droit dans "
 "l'éditeur propose toujours les deux options."
 
+msgid "Return starts a new paragraph"
+msgstr "Entrée démarre un nouveau paragraphe"
+
+msgid ""
+"Return ends the paragraph with a hard return and leaves space before the "
+"next. Off, Return starts a new line in the same paragraph. Shift+Return "
+"always does the other."
+msgstr ""
+"Entrée termine le paragraphe par un retour à la ligne forcé et laisse un "
+"espace avant le suivant. Désactivé, Entrée commence une nouvelle ligne dans "
+"le même paragraphe. Maj+Entrée fait toujours l'autre action."
+
 msgid "Write messages in"
 msgstr "Rédiger les messages en"
 
@@ -4355,6 +4724,18 @@ msgstr ""
 "Où placer la signature dans une réponse ou un transfert. Au-dessus du "
 "message cité, elle clôt ce que vous avez écrit ; en dessous, elle suit "
 "l'ensemble de la conversation."
+
+msgid "Separator line above the signature"
+msgstr "Ligne de séparation au-dessus de la signature"
+
+msgid ""
+"Puts the standard “-- ” line above the signature. Thunderbird, Evolution and "
+"Mutt use it to dim the signature and to leave it out when they quote your "
+"message."
+msgstr ""
+"Ajoute la ligne standard « -- » au-dessus de la signature. Thunderbird, "
+"Evolution et Mutt s'en servent pour estomper la signature et l'omettre "
+"lorsqu'ils citent votre message."
 
 msgid "Spelling"
 msgstr "Orthographe"
@@ -4791,8 +5172,33 @@ msgstr "Impossible de supprimer l'extension"
 msgid "Could not restart Files"
 msgstr "Impossible de redémarrer Fichiers"
 
+msgid "Choose a Sound"
+msgstr "Choisir un son"
+
+msgid "Sounds"
+msgstr "Sons"
+
 msgid "Forget this word"
 msgstr "Oublier ce mot"
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Click"
+msgstr "Clic"
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Hum"
+msgstr "Bourdonnement"
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "String"
+msgstr "Chaîne"
+
+#. GNOME Settings' own names for its alert sounds.
+msgid "Swing"
+msgstr "Balançoire"
+
+msgid "Custom File"
+msgstr "Fichier personnalisé"
 
 msgid "Print Message"
 msgstr "Imprimer le message"
@@ -4895,6 +5301,9 @@ msgstr "Actualiser"
 msgid "New Folder…"
 msgstr "Nouveau dossier…"
 
+msgid "Reset Folder Order"
+msgstr "Réinitialiser l'ordre des dossiers"
+
 msgid "Account Settings…"
 msgstr "Paramètres du compte…"
 
@@ -4904,11 +5313,17 @@ msgstr "Supprimer le compte…"
 msgid "Show or hide sub-folders"
 msgstr "Afficher ou masquer les sous-dossiers"
 
-msgid "Folders"
-msgstr "Dossiers"
+msgid "Show or hide folders"
+msgstr "Afficher ou masquer les dossiers"
 
 msgid "Folders ({len})"
 msgstr "Dossiers ({len})"
+
+msgid "Folders"
+msgstr "Dossiers"
+
+msgid "Sort Folders"
+msgstr "Trier les dossiers"
 
 msgid "Add Folder"
 msgstr "Ajouter un dossier"
@@ -4927,6 +5342,15 @@ msgstr "Afficher chaque tag"
 
 msgid "Long-press to expand or collapse"
 msgstr "Appui long pour déplier ou replier"
+
+msgid "Show or hide filters"
+msgstr "Afficher ou masquer les filtres"
+
+msgid "Show or hide tags"
+msgstr "Afficher ou masquer les tags"
+
+msgid "Follow Settings: {sort}"
+msgstr "Suivre les paramètres : {sort}"
 
 msgid "Apply Filters"
 msgstr "Appliquer des filtres"
@@ -4974,11 +5398,26 @@ msgstr ""
 msgid "Get Started"
 msgstr "Commencer"
 
+msgid "Import your online accounts"
+msgstr "Importer vos comptes en ligne"
+
+msgid ""
+"Mail accounts signed in under GNOME Settings → Online Accounts can be added "
+"here in one click. Google and Microsoft accounts are only supported through "
+"Online Accounts."
+msgstr ""
+"Les comptes de messagerie connectés dans Paramètres GNOME → Comptes en ligne "
+"peuvent être ajoutés ici en un clic. Les comptes Google et Microsoft ne sont "
+"pris en charge que via Comptes en ligne."
+
+msgid "No mail accounts were found in Online Accounts."
+msgstr "Aucun compte de messagerie n'a été trouvé dans Comptes en ligne."
+
+msgid "Scan Again"
+msgstr "Analyser à nouveau"
+
 msgid "Add your email account"
 msgstr "Ajoutez votre compte e-mail"
-
-msgid "Found in GNOME Online Accounts"
-msgstr "Trouvé dans GNOME Comptes en ligne"
 
 msgid "Your name"
 msgstr "Votre nom"
@@ -4999,17 +5438,6 @@ msgstr "Port IMAP"
 
 msgid "Test & Add"
 msgstr "Tester et ajouter"
-
-msgid ""
-"Accounts added in GNOME Settings → Online Accounts appear above, IMAP and "
-"SMTP ones included. Google and Microsoft sign in only that way."
-msgstr ""
-"Les comptes ajoutés dans Paramètres GNOME → Comptes en ligne apparaissent ci-"
-"dessus, IMAP et SMTP compris. Google et Microsoft ne peuvent se connecter "
-"que de cette façon."
-
-msgid "Scan Again"
-msgstr "Analyser à nouveau"
 
 msgid "Privacy, your way"
 msgstr "La confidentialité, à votre façon"
@@ -5083,31 +5511,11 @@ msgstr ""
 "fonctionnalité,\n"
 "veuillez ouvrir un ticket sur notre <a href=\"{url}\">GitHub</a>."
 
-msgid "Start Reading"
-msgstr "Commencer la lecture"
-
-#. Fixed footer: Continue lives with the dots so it never scrolls
-#. away with a tall page. Hidden on the hero and final pages, which
-#. carry their own calls to action.
 msgid "Continue"
 msgstr "Continuer"
 
-msgid "Set Up in Settings"
-msgstr "Configurer dans les paramètres"
-
-msgid ""
-"An OAuth account needs your provider's sign-in details. Settings opens on it "
-"when you finish here."
-msgstr ""
-"Un compte OAuth nécessite les identifiants de connexion de votre "
-"fournisseur. Les paramètres s'ouvriront dessus une fois que vous aurez "
-"terminé ici."
-
-msgid "Port"
-msgstr "Port"
-
-msgid "✓ Settings opens on your OAuth account at the end"
-msgstr "✓ Les paramètres s'ouvrent sur votre compte OAuth à la fin"
+msgid "Sign In & Add"
+msgstr "Se connecter et ajouter"
 
 msgid "Enter your email address and password first."
 msgstr "Saisissez d'abord votre adresse e-mail et votre mot de passe."
@@ -5118,6 +5526,9 @@ msgstr "Vérification de la connexion…"
 msgid "✓ {email} — added"
 msgstr "✓ {email} — ajouté"
 
+msgid "Add another email account"
+msgstr "Ajouter un autre compte de messagerie"
+
 msgid "✓ {email} — connected and added"
 msgstr "✓ {email} — connecté et ajouté"
 
@@ -5126,6 +5537,19 @@ msgstr "{email} — serveur de courrier : {e}"
 
 msgid "{email} — sending (SMTP): {e}"
 msgstr "{email} — envoi (SMTP) : {e}"
+
+msgid "✓ {email} — signed in and added"
+msgstr "✓ {email} — connecté et ajouté"
+
+msgid "Finish"
+msgstr "Terminer"
+
+msgid "Skip"
+msgstr "Passer"
+
+msgid "Enter your email address, the client ID and both OAuth URLs first."
+msgstr ""
+"Saisissez d'abord votre adresse e-mail, l'ID client et les deux URL OAuth."
 
 msgid "Your mail provider confirmed this really came from {from}."
 msgstr ""
@@ -5200,26 +5624,14 @@ msgstr ""
 "{from} est vérifié, mais l'adressage ne correspond pas au nom indiqué sur le "
 "message."
 
-msgid "Could not reach the JMAP server: {e}"
-msgstr "Impossible de contacter le serveur JMAP : {e}"
-
-msgid "Could not list folders: {e}"
-msgstr "Impossible de lister les dossiers : {e}"
-
-msgid "Sending…"
-msgstr "Envoi en cours…"
-
-msgid "Still could not send “{subject}”: {e}"
-msgstr "Impossible d'envoyer « {subject} » : {e}"
-
-msgid "Could not load message: {e}"
-msgstr "Impossible de charger le message : {e}"
-
 msgid "Syncing…"
 msgstr "Synchronisation…"
 
 msgid "Could not fetch mail: {e}"
 msgstr "Impossible de récupérer le courrier : {e}"
+
+msgid "Could not load message: {e}"
+msgstr "Impossible de charger le message : {e}"
 
 msgid "Could not load source: {e}"
 msgstr "Impossible de charger le code source : {e}"
@@ -5269,24 +5681,52 @@ msgstr "Enregistrement du brouillon…"
 msgid "Could not save draft: {e}"
 msgstr "Impossible d'enregistrer le brouillon : {e}"
 
+msgid "Sending…"
+msgstr "Envoi en cours…"
+
+msgid "A Microsoft account can't receive mail from another account"
+msgstr "Un compte Microsoft ne peut pas recevoir de courrier d'un autre compte"
+
+msgid "Removing the attachment…"
+msgstr "Suppression de la pièce jointe…"
+
+msgid "Could not remove the attachment: {e}"
+msgstr "Impossible de supprimer la pièce jointe : {e}"
+
+msgid "Could not list folders: {e}"
+msgstr "Impossible de lister les dossiers : {e}"
+
+msgid "The attachment is no longer in the message on the server"
+msgstr "La pièce jointe ne se trouve plus dans le message sur le serveur"
+
+msgid "Still could not send “{subject}”: {e}"
+msgstr "Impossible d'envoyer « {subject} » : {e}"
+
+msgid "Could not reach the JMAP server: {e}"
+msgstr "Impossible de contacter le serveur JMAP : {e}"
+
 msgid "Could not save draft: unknown folder"
 msgstr "Impossible d'enregistrer le brouillon : dossier inconnu"
-
-msgid ""
-"Send failed: {e}. The message is in the Outbox and will be sent when the "
-"connection is back."
-msgstr ""
-"Échec de l'envoi : {e}. Le message est dans la Boîte d'envoi et sera envoyé "
-"dès le rétablissement de la connexion."
-
-msgid "Send failed: {e}"
-msgstr "Échec de l'envoi : {e}"
 
 msgid "Could not reach the server"
 msgstr "Impossible de joindre le serveur"
 
 msgid "That folder is not on the server"
 msgstr "Ce dossier n'existe pas sur le serveur"
+
+msgid "The message is signed or encrypted, and removing a file would break it"
+msgstr ""
+"Le message est signé ou chiffré, et supprimer un fichier le rendrait invalide"
+
+msgid "The attachment is the whole message; delete the message instead"
+msgstr "La pièce jointe est le message entier ; supprimez plutôt le message"
+
+msgid ""
+"You deleted an attachment from this message. The original MIME headers for "
+"the attachment were:"
+msgstr ""
+"Vous avez supprimé une pièce jointe de ce message. Les en-têtes MIME "
+"d'origine de la pièce jointe étaient :"
 
 msgid "the server's reply could not be read (it began: {reply})"
 msgstr ""
@@ -5319,6 +5759,13 @@ msgstr "Impossible d'ajouter un tag au message : {e}"
 msgid "Could not mark folder read: {e}"
 msgstr "Impossible de marquer le dossier comme lu : {e}"
 
+msgid ""
+"Gmail keeps a copy of every message in All Mail, so Hylki cannot remove an "
+"attachment there"
+msgstr ""
+"Gmail conserve une copie de chaque message dans Tous les messages, Hylki ne "
+"peut donc pas y supprimer de pièce jointe"
+
 msgid "Could not move {len} messages: {e}"
 msgstr "Impossible de déplacer {len} messages : {e}"
 
@@ -5341,6 +5788,16 @@ msgid "Downloading attachments… {n} remaining"
 msgid_plural "Downloading attachments… {n} remaining"
 msgstr[0] "Téléchargement des pièces jointes… {n} restante"
 msgstr[1] "Téléchargement des pièces jointes… {n} restantes"
+
+msgid ""
+"Send failed: {e}. The message is in the Outbox and will be sent when the "
+"connection is back."
+msgstr ""
+"Échec de l'envoi : {e}. Le message est dans la Boîte d'envoi et sera envoyé "
+"dès le rétablissement de la connexion."
+
+msgid "Send failed: {e}"
+msgstr "Échec de l'envoi : {e}"
 
 msgid "“{subject}” will be sent {when}"
 msgstr "« {subject} » sera envoyé {when}"
@@ -5368,11 +5825,14 @@ msgstr "Les comptes POP3 ne prennent pas en charge les dossiers"
 msgid "A POP3 account can't receive mail from another account"
 msgstr "Un compte POP3 ne peut pas recevoir de courrier d'un autre compte"
 
+msgid ""
+"POP3 cannot change a message on the server, so the attachment was not removed"
+msgstr ""
+"Le POP3 ne permet pas de modifier un message sur le serveur, la pièce jointe "
+"n'a donc pas été supprimée"
+
 msgid "Inbox"
 msgstr "Boîte de réception"
-
-msgid "A Microsoft account can't receive mail from another account"
-msgstr "Un compte Microsoft ne peut pas recevoir de courrier d'un autre compte"
 
 msgid "Email Client"
 msgstr "Client e-mail"
@@ -5510,6 +5970,44 @@ msgstr "La boîte de réception unifiée en mode clair"
 
 msgid "Hyprlab"
 msgstr "Hyprlab"
+
+#, fuzzy
+#~ msgid "Remove Sound"
+#~ msgstr "Supprimer le compte ?"
+
+#, fuzzy
+#~ msgid "Send it with the message"
+#~ msgid_plural "Send them with the message"
+#~ msgstr[0] "Au-dessus des messages"
+#~ msgstr[1] "Au-dessus des messages"
+
+#~ msgid "Found in GNOME Online Accounts"
+#~ msgstr "Trouvé dans GNOME Comptes en ligne"
+
+#~ msgid ""
+#~ "Accounts added in GNOME Settings → Online Accounts appear above, IMAP and "
+#~ "SMTP ones included. Google and Microsoft sign in only that way."
+#~ msgstr ""
+#~ "Les comptes ajoutés dans Paramètres GNOME → Comptes en ligne apparaissent "
+#~ "ci-dessus, IMAP et SMTP compris. Google et Microsoft ne peuvent se "
+#~ "connecter que de cette façon."
+
+#~ msgid "Start Reading"
+#~ msgstr "Commencer la lecture"
+
+#~ msgid "Set Up in Settings"
+#~ msgstr "Configurer dans les paramètres"
+
+#~ msgid ""
+#~ "An OAuth account needs your provider's sign-in details. Settings opens on "
+#~ "it when you finish here."
+#~ msgstr ""
+#~ "Un compte OAuth nécessite les identifiants de connexion de votre "
+#~ "fournisseur. Les paramètres s'ouvriront dessus une fois que vous aurez "
+#~ "terminé ici."
+
+#~ msgid "✓ Settings opens on your OAuth account at the end"
+#~ msgstr "✓ Les paramètres s'ouvrent sur votre compte OAuth à la fin"
 
 #~ msgid "One message stayed put — mail can't be moved between accounts"
 #~ msgstr ""
