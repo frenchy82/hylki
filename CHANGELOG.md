@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.43.1 — 2026-10-09
+
+The new-mail sound plays whatever alert sound GNOME is set to.
 
 - **Fixed: the new-mail sound did not play** (#337, reported by yioannides)
   when GNOME's own alert sound was set to None in Settings → Sound, although
