@@ -215,6 +215,10 @@ pub struct NewMailSound {
     pub enabled: bool,
     /// One of `BUILTIN_SOUNDS`, or `CUSTOM_SOUND`.
     pub sound: String,
+    /// Play it while the window is in front too, where no notification is
+    /// shown (#337). Off, the sound comes only with the notification.
+    #[serde(default)]
+    pub when_focused: bool,
 }
 
 impl NewMailSound {
@@ -246,6 +250,7 @@ pub fn load_new_mail_sound() -> NewMailSound {
     NewMailSound {
         enabled: custom,
         sound: if custom { CUSTOM_SOUND } else { BUILTIN_SOUNDS[0] }.to_string(),
+        when_focused: false,
     }
 }
 
@@ -265,6 +270,13 @@ pub fn save_new_mail_sound(sound: &NewMailSound) {
 pub fn new_mail_sound() -> Option<SoundSource> {
     let sound = load_new_mail_sound();
     if sound.enabled { sound.source() } else { None }
+}
+
+/// Whether the new-mail sound plays while the window is in front as well
+/// (#337).
+pub fn sound_when_focused() -> bool {
+    let sound = load_new_mail_sound();
+    sound.enabled && sound.when_focused
 }
 
 /// Service name used for keyring entries; password items are keyed by email.
@@ -4029,14 +4041,20 @@ mod tests {
 
     #[test]
     fn new_mail_sound_names_a_builtin_or_falls_back() {
-        let resource = |sound: &str| match (super::NewMailSound { enabled: true, sound: sound.into() }).source() {
+        let resource = |sound: &str| match (super::NewMailSound { enabled: true, sound: sound.into(), when_focused: false })
+            .source()
+        {
             Some(super::SoundSource::Resource(p)) => p,
             _ => panic!("a built-in plays from the bundle"),
         };
         assert_eq!(resource("hum"), "/co/hyprlab/Hylki/sounds/hum.ogg");
         assert_eq!(resource("bogus"), "/co/hyprlab/Hylki/sounds/click.ogg");
+        // A sound.toml from before the in-front switch (#337) still reads.
         let saved: super::NewMailSound = toml::from_str("enabled = true\nsound = \"swing\"").unwrap();
-        assert_eq!(saved, super::NewMailSound { enabled: true, sound: "swing".into() });
+        assert_eq!(saved, super::NewMailSound { enabled: true, sound: "swing".into(), when_focused: false });
+        let saved: super::NewMailSound =
+            toml::from_str("enabled = true\nsound = \"swing\"\nwhen_focused = true").unwrap();
+        assert!(saved.when_focused);
     }
 
     #[test]

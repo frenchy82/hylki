@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Added: the new-mail sound while Hylki is in front** (#337, reported by
+  yioannides). Like the notification, the sound came only while the window
+  was in the background or closed, as GNOME shows no notification for the
+  app in front. **Settings → General → Also play while Hylki is in front**
+  plays it then as well, without a notification; off by default.
 - **Changed: the exported log records what the new-mail sound did** (#337):
   playing, ready, finished, skipped because the previous one was still
   playing, switched off, or held back by Do Not Disturb. A sound that still

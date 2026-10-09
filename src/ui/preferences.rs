@@ -1095,6 +1095,7 @@ pub enum PrefInput {
     /// The new-mail sound (#292): on or off, which one (an index into the
     /// built-ins, then Custom File), pick a file, it was picked, hear it.
     ToggleSound(bool),
+    ToggleSoundFocused(bool),
     ChangeSound(u32),
     ChooseSound,
     SoundChosen(std::path::PathBuf),
@@ -1998,6 +1999,20 @@ impl Component for Preferences {
                                             connect_clicked[sender] => move |_| {
                                                 sender.input(PrefInput::ChooseSound);
                                             },
+                                        },
+                                    },
+
+                                    // GNOME shows no notification for the app
+                                    // in front, so by default there is no sound
+                                    // either; this plays it anyway (#337).
+                                    #[name = "sound_focused_row"]
+                                    adw::SwitchRow {
+                                        #[watch]
+                                        set_sensitive: model.notifications && model.sound.enabled,
+                                        set_title: &i18n("Also play while Hylki is in front"),
+                                        set_subtitle: &i18n("Otherwise the sound comes only with the notification, when the window is in the background or closed."),
+                                        connect_active_notify[sender] => move |row| {
+                                            sender.input(PrefInput::ToggleSoundFocused(row.is_active()));
                                         },
                                     },
 
@@ -3915,6 +3930,7 @@ impl Component for Preferences {
         let labels: Vec<&str> = labels_owned.iter().map(String::as_str).collect();
         widgets.sound_choice_row.set_model(Some(&gtk::StringList::new(&labels)));
         widgets.sound_choice_row.set_selected(sound_index(&model.sound.sound));
+        widgets.sound_focused_row.set_active(model.sound.when_focused);
         widgets.notify_mark_read_row.set_active(init.notification_buttons.mark_read);
         widgets.notify_archive_row.set_active(init.notification_buttons.archive);
         widgets.notify_delete_row.set_active(init.notification_buttons.delete);
@@ -4845,6 +4861,12 @@ impl Component for Preferences {
             PrefInput::ToggleSound(on) => {
                 if self.sound.enabled != on {
                     self.sound.enabled = on;
+                    crate::config::save_new_mail_sound(&self.sound);
+                }
+            }
+            PrefInput::ToggleSoundFocused(on) => {
+                if self.sound.when_focused != on {
+                    self.sound.when_focused = on;
                     crate::config::save_new_mail_sound(&self.sound);
                 }
             }
