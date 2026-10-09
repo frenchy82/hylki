@@ -124,12 +124,12 @@ pub fn new_mail(
     }
     send(&mail_id(account_id), &n);
     POSTED.with(|p| p.borrow_mut().insert(account_id, (folder_id, message_id)));
-    if let Some(sound) = crate::config::new_mail_sound() {
-        if crate::desktop::quiet() {
+    match crate::config::new_mail_sound() {
+        None => tracing::debug!("new-mail sound: switched off"),
+        Some(_) if crate::desktop::quiet() => {
             tracing::info!("new-mail sound: not played, Do Not Disturb is on");
-        } else {
-            play_sound(&sound, false);
         }
+        Some(sound) => play_sound(&sound, false),
     }
 }
 
@@ -148,10 +148,17 @@ pub fn posted_for(account_id: u32) -> Option<(u32, u32)> {
 }
 
 thread_local! {
-    /// The sound playing, held until it ends: a dropped `MediaFile` stops
-    /// mid-play.
-    static SOUND: std::cell::RefCell<Option<gtk::MediaFile>> = const { std::cell::RefCell::new(None) };
+    /// The sound playing and when it started, held until it ends: a dropped
+    /// `MediaFile` stops mid-play.
+    static SOUND: std::cell::RefCell<Option<(gtk::MediaFile, std::time::Instant)>> =
+        const { std::cell::RefCell::new(None) };
 }
+
+/// How long a playing sound holds off the next one. Notifications from
+/// accounts syncing together land within a second or two of each other; an
+/// alert sound that still says "playing" after this has not ended and never
+/// will (#337), and must not silence every sound after it.
+const HOLD_OFF: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// Play the new-mail sound (#292). The notification itself goes through the
 /// portal, which has no way to carry a sound of the app's choosing, so the
@@ -159,39 +166,79 @@ thread_local! {
 /// notifications; a sound still playing is left to finish rather than
 /// stacked with copies of itself. `restart` is Settings' Play button, which
 /// starts over.
+///
+/// Every step is logged: the sound is the one thing a notification does that
+/// leaves no trace on screen, so an exported log is all there is to go on
+/// when someone hears nothing (#337).
 pub fn play_sound(sound: &crate::config::SoundSource, restart: bool) {
     SOUND.with(|slot| {
         let mut slot = slot.borrow_mut();
-        if !restart && slot.as_ref().is_some_and(|m| m.is_playing()) {
-            return;
+        if !restart {
+            if let Some((m, since)) = slot.as_ref() {
+                if m.is_playing() {
+                    let age = since.elapsed();
+                    if age < HOLD_OFF {
+                        tracing::info!(
+                            "new-mail sound: skipped, the previous one has been playing for {:.1} s",
+                            age.as_secs_f32()
+                        );
+                        return;
+                    }
+                    tracing::warn!(
+                        "new-mail sound: the previous one has said playing for {:.0} s without ending; playing anyway",
+                        age.as_secs_f32()
+                    );
+                }
+            }
         }
-        let media = match sound {
-            crate::config::SoundSource::Resource(path) => gtk::MediaFile::for_resource(path),
-            crate::config::SoundSource::File(path) => gtk::MediaFile::for_filename(path),
+        let (media, what) = match sound {
+            crate::config::SoundSource::Resource(path) => {
+                let name = path.rsplit('/').next().unwrap_or(path).trim_end_matches(".ogg");
+                (gtk::MediaFile::for_resource(path), format!("{name} (built-in)"))
+            }
+            crate::config::SoundSource::File(path) => (
+                gtk::MediaFile::for_filename(path),
+                path.file_name().map_or_else(|| path.display().to_string(), |n| n.to_string_lossy().into_owned()),
+            ),
         };
+        tracing::info!(
+            "new-mail sound: playing {what} {}",
+            if restart { "from Settings" } else { "for new mail" }
+        );
+        let started = std::time::Instant::now();
         media.connect_error_notify(|m| {
             if let Some(e) = m.error() {
                 tracing::warn!("new-mail sound: {e}");
             }
         });
+        media.connect_prepared_notify(|m| {
+            if m.is_prepared() && m.error().is_none() {
+                tracing::debug!(
+                    "new-mail sound: ready, {} ms, audio: {}",
+                    m.duration() / 1000,
+                    if m.has_audio() { "yes" } else { "no" }
+                );
+            }
+        });
         // Let go of it once it has played, or its audio stream stays open
         // for as long as the app runs.
-        media.connect_ended_notify(|m| {
+        media.connect_ended_notify(move |m| {
             if !m.is_ended() {
                 return;
             }
+            tracing::info!("new-mail sound: finished after {:.1} s", started.elapsed().as_secs_f32());
             let m = m.clone();
             gtk::glib::idle_add_local_once(move || {
                 SOUND.with(|slot| {
                     let mut slot = slot.borrow_mut();
-                    if slot.as_ref() == Some(&m) {
+                    if slot.as_ref().is_some_and(|(held, _)| held == &m) {
                         *slot = None;
                     }
                 });
             });
         });
         media.play();
-        *slot = Some(media);
+        *slot = Some((media, started));
     });
 }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Changed: the exported log records what the new-mail sound did** (#337):
+  playing, ready, finished, skipped because the previous one was still
+  playing, switched off, or held back by Do Not Disturb. A sound that still
+  says it is playing after ten seconds no longer silences the ones after it.
+
 ## 1.43.1 — 2026-10-09
 
 The new-mail sound plays whatever alert sound GNOME is set to.
