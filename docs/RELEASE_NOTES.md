@@ -2,6 +2,48 @@
 
 Hylki (formerly Vireo) is a clean, fast, GNOME-native email client built with Rust and libadwaita for Wayland desktops. Privacy-first: no telemetry, remote content blocked by default, and credentials kept in the system keyring.
 
+## What's new in 1.43.1-beta.1
+
+The first beta previewing 1.43.1.
+
+- **Fixed: the new-mail sound did not play** when GNOME's alert sound is
+  set to None (#337, reported by yioannides). Hylki's own switch decides
+  now; Do Not Disturb still silences it in a native install.
+
+## What's new in 1.43.0
+
+- **Microsoft accounts without GNOME Online Accounts** (#329):
+  *Microsoft 365 / Outlook* signs in with Hylki's own Microsoft app in the
+  browser, or with another app registration, and a managed device signs in
+  through Microsoft's identity broker.
+- **Templates** (#360), **Favorites** (#367), **Junk and Trash in the
+  unified section** (#369), and drafts that save themselves while you
+  write (#340).
+- **A single-line message list** (#334) with the columns you choose,
+  **folding messages in a conversation** (#326), and **translating
+  messages** (#327) with your own DeepL, Google, Microsoft or
+  LibreTranslate key.
+- **More formatting tools in the composer** (#358), spell checking in
+  several languages at once (#365), a From address typed for one message
+  (#347), and Ctrl+N, Ctrl+R, Ctrl+Shift+R and Ctrl+U (#328).
+- **Fastmail and any JMAP server** (#356), with the server's identities
+  offered as From addresses (#346).
+- **Printing with page numbers and the print date** (#359), also from a
+  message's own window, and **right-to-left layout** for Persian, Arabic,
+  Hebrew and other right-to-left languages (#366).
+- **RPM updates through dnf:** the RPM adds Hylki's signed dnf repository,
+  so it updates with the rest of the system.
+- **Fixed:** accounts failing to sign in until a restart when the keyring
+  was not ready (#375), a message lost to an address that cannot be sent to
+  (#368) or to an attachment that had moved (#340), a freeze after start
+  (#316) and in All Archive, new mail not appearing until the folder was
+  opened again (#336), and opening a message waiting behind syncing (#370)
+  or IMAP syncing waiting on a silent connection (#324), both by
+  [@salemsayed](https://github.com/salemsayed).
+- **Translations:** Russian is complete, by
+  [@iliasen](https://github.com/iliasen); Hungarian, French, Greek and
+  Portuguese are brought up to date.
+
 ## What's new in 1.43.0-beta.7
 
 The seventh beta previewing 1.43.0.

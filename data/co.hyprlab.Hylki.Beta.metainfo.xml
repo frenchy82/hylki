@@ -63,6 +63,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.43.1-beta.1" date="2026-10-09" type="development">
+      <description>
+        <p>First preview of 1.43.1: the new-mail sound plays whatever alert sound GNOME is set to, None included.</p>
+      </description>
+    </release>
     <release version="1.43.0-beta.7" date="2026-10-07" type="development">
       <description>
         <p>Seventh preview of 1.43.0: accounts sign in again once a keyring that was locked or not ready at login answers, without restarting Hylki, and updated Greek and French translations.</p>

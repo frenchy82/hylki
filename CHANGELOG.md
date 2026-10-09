@@ -1,5 +1,439 @@
 # Changelog
 
+## 1.43.1-beta.1 — 2026-10-09
+
+The first beta previewing 1.43.1.
+
+- **Fixed: the new-mail sound did not play** (#337, reported by yioannides)
+  when GNOME's own alert sound was set to None in Settings → Sound, although
+  the Play button in Hylki's Settings did. The sound now follows Hylki's own
+  switch alone; in a native install it still stays silent while Do Not
+  Disturb is on. `HYLKI_SHOWCASE_NOTIFY[=<seconds>]` posts the new-mail
+  notification on a timer, for trying the sound and the buttons without
+  waiting for mail.
+
+## 1.43.0 — 2026-10-08
+
+Everything from 1.43.0-beta.1 to 1.43.0-beta.7: Microsoft accounts without
+GNOME Online Accounts, templates, Favorites, a single-line message list,
+translating messages, folding messages in a conversation, more formatting
+tools, Fastmail and other JMAP servers, printing with page numbers, and
+right-to-left layout. The RPM now updates through dnf. Russian is complete.
+
+- **Added: RPM updates through dnf.** The RPM installs
+  `/etc/yum.repos.d/hylki.repo`, the signed dnf repository on
+  hylki.hyprlab.co, so an RPM installed from a download updates with the rest
+  of the system, in GNOME Software or with `dnf upgrade`. The repository can
+  also be added on its own; see docs/INSTALLING.md. Betas come as RPMs too,
+  from a beta dnf repository that every RPM carries switched off
+  (`sudo dnf config-manager setopt hylki-beta.enabled=1` turns it on).
+- **Added: Microsoft sign-in on a managed device** (#329, requested by
+  erenoglu). Where an organization's Conditional Access lets only a managed
+  device sign in, Hylki asks Microsoft's identity broker
+  (`microsoft-identity-broker`, or Himmelblau) for a device sign-in cookie,
+  as Evolution does, and sends it with the sign-in window and with every
+  token refresh. The broker's account is the one with the account's address.
+  Without a broker, sign-in is unchanged.
+- **Added: spell checking in several languages at once** (#365, requested
+  by amadeusp). **Settings → Composing → Languages** has a switch for the
+  system language and one for each installed dictionary, in place of the
+  single language list, and any number can be on. A word in the subject or
+  the body is underlined only when none of the chosen dictionaries knows it.
+  The body's right-click menu has a **Spelling Language** submenu with the
+  same choices, which changes the setting for every open composer. A
+  language without its own dictionary uses another of the same language, or
+  is left out; a word added to the spell checker goes into the first
+  language's word list.
+- **Added: Favorites** (#367, requested by eirinn1975). **Add to
+  Favorites** in a folder's right-click menu lists it in a Favorites row at
+  the top of the sidebar, under Inboxes, whichever account it belongs to.
+  Favorites keep the order they were added in, show unread counts and
+  open or close from their row; **Remove from Favorites** takes one out. The
+  row shows with a single account too. A folder renamed in Hylki stays a
+  favorite; one deleted leaves the list.
+- **Added: Junk and Trash in the unified section** (#369, requested by
+  amadeusp). **Settings → Sidebar → Unified** has a switch for each, off
+  until switched on, along with their unread counts and the icon rail's
+  fold-up. In the combined lists **Not Spam** and **Move to Inbox** send
+  each message to its own account's Inbox and Delete in Trash deletes for
+  good, as in an account's own folders. Each account's row beneath has
+  **Empty Junk…** or **Empty Trash…** in its right-click menu.
+- **Fixed: accounts failed to sign in until Hylki restarted when the
+  keyring did not answer at login** (#375, reported by Michael-Zebratrix).
+  A keyring that was locked or still starting when Hylki read an account's
+  password left the account signing in with an empty one, which the server
+  refused as a wrong password, for the rest of the session. Hylki now reads
+  the keyring again at every sign-in until it answers, sends no sign-in
+  without the password, and says the keyring could not be read instead of
+  reporting a failed login. IMAP, POP3, JMAP and sending are all covered.
+- **Fixed: the window stayed left to right in Persian and other
+  right-to-left languages** (#366, reported by OmidAmirkhani). GTK takes
+  the direction from its own translations, which the Flatpak runtime often
+  lacks, and a language chosen in Settings never reached them. The window
+  now follows the interface language: Arabic, Persian, Hebrew, Urdu and the
+  other right-to-left languages lay it out from the right, sidebar, list,
+  reader headers and composer included. Messages take the direction of
+  their own text whatever the interface language, unless the sender set
+  one; plain text, the Reader View and the composer decide it paragraph by
+  paragraph, so Persian and English mixed in one message both read right.
+  The interface text stays in English until Hylki is translated into
+  Persian.
+- **Fixed: a message could be lost to an address that cannot be sent to**
+  (#368, reported by martin-ribot). **Send** now checks every address in
+  To, Cc, Bcc and Reply-To first, and an address that is not one keeps the
+  composer open with its field marked and the address named. Invisible
+  characters pasted along with an address (zero-width spaces, direction
+  marks, no-break spaces) are taken out of it, and the field shows the
+  result. A recipient the server refuses brings the message back in a
+  composer to be fixed, where before it went to the Outbox and failed again
+  on every retry.
+- **Fixed: Exchange accounts from Online Accounts failed with "No address
+  associated with hostname"** (#316, reported by wil-m). Hylki can't use
+  Exchange (EWS) accounts, which have no IMAP server: the welcome window no
+  longer offers them for import, as Settings already didn't, and one
+  imported before now says what to do instead.
+- **Fixed: Microsoft 365 accounts showed an "Instant new mail (IMAP push)"
+  setting** (#329, reported by erenoglu). Microsoft 365 has no push and
+  checks at the fetch interval, so the row is gone from those accounts and
+  from POP3 ones, and is now called "Instant new mail (push)", since JMAP
+  accounts use it too.
+- **Fixed: opening a message could wait behind background syncing** (#370,
+  by Salem Sayed Abdel Gawad). A body that is not cached yet no longer waits
+  for folder syncs, body prefetch, search indexing or unread counts that
+  were already running: they stop for it, reconnect and pick up where they
+  left off, though never ahead of a move or flag change still queued.
+  Connecting and refreshing list folders with their cached counts and
+  re-count them afterwards, in place of a STATUS command per folder first.
+  Conversation badges are read from the cache on a connection of their own,
+  and reading bodies from the mailbox already selected skips a SELECT each.
+- **Added: templates** (#360, requested by amadeusp). A Templates folder is
+  now a special folder like Drafts and Sent: found by its name, or chosen
+  under **Special Folders** in the account's settings, and listed after
+  Drafts with its own icon. **Save as Template**, beside **Save Draft** in
+  the composer, keeps a copy of the message there as read mail rather than
+  a draft, and makes the folder if the account has none. A template in the
+  reader has a banner with **Use Template**, which starts a new message from
+  a copy of it (as a double-click on it in the list does), and **Edit
+  Template**, which opens the template itself to change and save back.
+  **New Message from Template…**, in an arrow at the end of **New Message**
+  like the one beside **Send**, on its right-click menu, or Ctrl+Shift+N,
+  picks one from every account. Templates are left out of
+  conversations, filters and the attachment gallery. Microsoft 365 has no
+  Templates folder of its own: one is made, and a template saved there is
+  moved in from Drafts.
+- **Added: page numbers, the date printed and a wider left margin on
+  printed mail** (#359, requested by rsx-xp). **Settings → Reading →
+  Printing** puts "Page 2 of 5" (on by default) and the date and time of
+  printing at the foot of every page, and can widen the left margin to
+  25 mm for hole punching. Pages now have a 15 mm margin all round, where
+  they had the paper's quarter inch. Hylki makes the PDF itself and adds
+  the footer to it, so the preview shows each page exactly as it will
+  print, footer and margins included, and Save as PDF saves that file.
+- **Added: printing from a message's own window** (#359). The window has
+  the printer button for the preview, and the right-click menu in any
+  message, in the main window or its own, offers **Print Preview** and
+  **Print…**. Ctrl+Shift+P in a message's own window opened no preview;
+  it now does.
+- **Changed: a message's own window has the reader's toolbar and
+  attachment drawer.** The toolbar shows the same buttons in the order
+  **Settings → Appearance → Toolbar** gives them, Tags, Read/Unread, Move
+  To and Find among them, and folds its right-hand group into a ⋯ menu when
+  the window is narrow. Add sender to Contacts and View Source left the
+  toolbar for the right-click menu, which already had them, and the subject
+  is no longer repeated in the window's header. The attachments button and
+  its list are gone: the files are in the drawer under the message, and on
+  the cards when those are on, for every message of a conversation, with
+  the same full-window preview for images and PDFs. Changes to the toolbar
+  and to the attachment settings reach open windows at once.
+- **Fixed: Reader View switched on in a message's own window switched it
+  on in the main window too.** The window's switch now changes that window
+  alone, and the remembered choice is left as it was.
+- **Changed: a message card's ⋯ opens the message's menu by default.**
+  **Settings → Reading → Message card actions palette as a menu** is on
+  for new installs; an existing install keeps its setting.
+- **Fixed: a message could print as thousands of blank pages** where the
+  desktop sets no font resolution (no settings portal or XSettings).
+
+- **Added: more formatting tools in the composer** (#358, requested by
+  urkos101). A chevron at the end of the formatting toolbar shows paragraph
+  styles (headings and preformatted text), fonts, text and highlight colors,
+  indent and outdent (which nest list items), and buttons for emoji and
+  pictures. **Settings → Composing → Formatting toolbar** says whether a new
+  message starts with them shown or, the default, hidden; the tools that
+  are always there keep to what Markdown can say. Quote has a quote-mark
+  icon of its own, and the toolbar wraps onto a second row in a narrow
+  composer. An indented paragraph is not mistaken for a quote, in the
+  composer, in the reader or in the plain-text part.
+- **Changed: the Keyboard Shortcuts list names every shortcut.** It gains
+  the emoji chooser (Ctrl+. or Ctrl+;), Shift+Return, bold, italic and
+  underline, Ctrl+F, Delete in the list, Ctrl+P, and the attachment drawer's
+  and gallery's keys, in new Writing and Attachments sections. Its note on
+  single-key shortcuts now points to Settings → System, where the switch is.
+- **Added: a JMAP account's server identities are listed in its settings**
+  (#346, suggested by pdf). Under Send-as aliases, read-only: they are
+  changed where the server keeps them, such as its webmail.
+- **Added: Fastmail over JMAP, and any JMAP server** (#356, requested by
+  Y4LIT). The Provider list has a Fastmail (JMAP) entry, which fills in
+  Fastmail's session URL and signs in with an API token, and a JMAP Server
+  entry, marked by a red JMAP tile like the IMAP and OAuth ones, for servers
+  other than Fastmail and Stalwart. A JMAP account can sign in with a bearer
+  token in place of its username and password, and its server can be given
+  as the full URL of its session resource.
+- **Fixed: the window stopped responding for about twenty seconds after
+  start** (#316, reported by wil-m). A GnuPG keyring lock left behind by a
+  gpg or keyboxd that had stopped serving it makes every gpg call wait about
+  ten seconds and then fail. The hidden Settings window read the keyring at
+  startup, and an account's settings did each time they opened, on the
+  thread that draws the window. All of Hylki's own gpg calls now run in the
+  background, and the log says when gpg waited on a lock.
+- **Fixed: opening a reply showed your own sent original at the top**
+  (#351, reported by amadeusp). The reply was shown alone first, and when
+  the original joined from Sent the conversation stayed scrolled to the
+  top. It now opens on the first unread or newest message, as a
+  conversation opened whole does. The row's conversation count is also
+  asked for again when it missed a part, after its conversation was
+  regrouped or when the reader finds more than the row knew of.
+- **Fixed: the dock badge lost the unread count after the screen was
+  locked** (#353, PR #354 by Isaac). Ubuntu Dock and Dash to Dock start
+  afresh at every unlock and show the notification count until an app sends
+  its own again, and Hylki skipped sending a count it had sent before. It
+  now sends it again whenever the dock comes back, and on wake, on Refresh
+  and when the window is focused.
+- **Fixed: All Archive, and other combined views of very large folders,
+  froze the window** until the desktop offered to force quit. Every
+  account's answer, and every batch a slow one sent, regrouped the whole
+  view on the spot, tens of thousands of messages each time, one after
+  another. Now:
+  - The newest messages go on screen at once.
+  - Conversations are worked out on a background thread, and the whole
+    list follows.
+  - Answers that arrive close together are merged once, and an account still
+    catching up can trigger a merge only every few seconds.
+  - A long list puts its rows on screen a screenful at a time, adding more
+    as it is scrolled toward the end.
+- **Added: messages being written are saved to Drafts as you go** (#340,
+  reported by 7system7). Every 30 seconds while it changes, a message is
+  saved to the Drafts folder in place of its last copy, with the composer
+  left open. Discarding a new message removes its copy. A save that fails is
+  tried again quietly.
+- **Changed: folders inside the Inbox are listed under it** (#345, suggested
+  by bstegmaier75). On a server that keeps some folders inside the Inbox
+  (`INBOX.Ablage`) and others beside it, the ones inside are now under the
+  Inbox row, which folds them away with its arrow, as Roundcube and Apple
+  Mail show them. Before, they were mixed in with the other folders. A
+  server that keeps every folder inside the Inbox is unchanged.
+- **Added: unread counts can mark only new mail** (#343, suggested by pdf).
+  With Settings → Sidebar → Highlight only new unread mail on (it is off by
+  default), a folder's count is in the accent color only while mail has come
+  in since the folder was last looked at, and grey once it has been, as in
+  Thunderbird. The account circle, All Inboxes and the unified rows follow
+  the folders they count.
+- **Added: Microsoft accounts can sign in with another app registration**
+  (#329, suggested by erenoglu). An Advanced row on a Microsoft account's
+  page takes a client ID, a tenant, scopes and a redirect URI, so an
+  organization that has approved another mail app, such as Evolution, can
+  sign in with that registration. A redirect that is not a `localhost`
+  address signs in in a window of Hylki's, which catches it, rather than in
+  the browser.
+- **Added: the From address can be typed** (#347, suggested by pdf). A pencil
+  on the composer's From row turns it into text, for any name and address on
+  one message without making it an alias; the message still goes through the
+  account chosen. With one address, the row is under More. A reply to mail
+  sent to a `+tag` address of yours starts from that address, and a draft
+  saved from a typed address opens with it.
+- **Added: a JMAP server's identities are offered as From addresses** (#346,
+  suggested by pdf). They are read when the account connects, and a message
+  is sent as the identity with its address, or a catch-all identity for its
+  domain (`*@example.org`), before the first identity is used. A JMAP alias
+  no longer shows SMTP settings, which JMAP does not use.
+- **Added: subjects are translated, and the composer can show the original
+  again** (#327, suggested by pdf). Translating a message translates its
+  subject too, in the heading above it, and Show Original puts
+  it back. In the composer, translating everything you wrote takes the
+  subject with it, except in a reply or forward. Until the text is changed
+  again, the Translate menu offers Show Original and Show Translation, which
+  swap the body and subject back and forth.
+- **Changed: a folded message in a conversation shows its first lines**
+  (#326, suggested by pdf). Under the sender, a folded card now has as many
+  lines of preview as the message list shows, set under Settings → Message
+  List → Preview lines. The subject is left to the conversation's heading
+  above the cards.
+- **Fixed: a reopened draft lost its From address, Bcc, files and place in
+  the conversation** (#350, reported by pdf). A draft opened in the composer
+  was rebuilt from what the reader showed of it: the To, Cc, subject and
+  text, and nothing else. It is now opened from the draft itself, so it
+  comes back from the address it was written from, with its Bcc recipients,
+  its attachments, its pictures in the text, and the headers that keep a
+  reply in its conversation. Drafts also keep their Bcc header when saved;
+  they used to lose it. Each reopening also added an empty line at the top
+  (#349, reported by amadeusp), and an edited Outbox message gained a second
+  signature. Neither happens now.
+- **Fixed: the emoji chosen with Ctrl+. never reached the message** (#348,
+  reported by amadeusp). The chooser that opened belonged to WebKitGTK, which
+  drops the emoji picked in it. The composer now opens GTK's emoji chooser
+  itself, at the cursor, on Ctrl+. or Ctrl+;, and types the emoji where the
+  cursor was.
+- **Changed: the emoji chooser opens at the cursor in every text field.** In
+  the subject, the search fields and the fields in Settings, GTK pointed it at
+  the middle of the field, wherever the cursor was. It now opens under the
+  cursor, from Ctrl+., Ctrl+; or Insert Emoji in the field's menu.
+- **Translations:** French (PRs #341 and #352 by frenchy82) and Russian (PR
+  #338 by Ilya Semenkovich) brought up to date with 1.43.0-beta.2, and
+  Portuguese for Portugal and Brazil (PR #357 by Paulo Fino) with
+  1.43.0-beta.3 and the JMAP sign-in. Russian again (PR #371 by Ilya
+  Semenkovich) with 1.43.0-beta.5, templates included. Greek (PR #377 by
+  Yiannis Ioannides) and French (PR #373 by frenchy82) with 1.43.0-beta.7,
+  and Russian (PR #378 by Ilya Semenkovich) with 1.43.0, now complete.
+- **Fixed: Send with Hylki in GNOME Files went to the stable build when the
+  beta was installed beside it.** The extension now opens the files in
+  whichever Hylki is the default mail app, and the beta takes every
+  selected file in one message, as the stable build does. Reinstall the
+  extension from Settings → System → GNOME Files to update it.
+- **Changed: the recipients button and the Unsubscribe and Translate
+  buttons in a message's header are filled, without an outline** (#342,
+  suggested by yioannides), as Adwaita draws buttons. Their shade follows
+  the text color, so they suit light and dark themes alike.
+- **Fixed: new mail sometimes did not appear until the folder was opened
+  again** (#336, reported by yioannides). Mail that arrived while the
+  connection was busy, marking a message read or fetching a body, was
+  reported only to the command that reopened the folder before the next
+  wait, and Hylki ignored it there. That command is now checked for new
+  mail. An unread count that arrives while a read mark or a move is still
+  on its way is set aside, as before, but the folder is now synced once
+  they are stored: the count could be the only sign of new mail.
+- **Fixed: Email… in GNOME Files could open no message** (#339, reported by
+  frenchy82). When none of the files could be read, Hylki asked where zero
+  files should go instead of opening a message; it now opens one, with the
+  error beside it. File paths from the desktop's Email portal are read as
+  they come, unescaped, so a name with `&` or `%` in it, or a
+  `file://localhost/` URI, attaches too. A message started from files
+  asks before it is closed unsaved.
+- **Fixed: a message could be lost when an attachment had moved** (#340,
+  reported by 7system7). Attachments are read when the message is sent, and
+  the composer closed on Send. When a file had been moved or deleted, the
+  send failed, the Outbox could not hold the message either, and nothing was
+  kept. Send now refuses while an attached file is missing, and its chip
+  shows Not found. A message that can be neither sent, queued nor saved as
+  a draft opens in a composer again instead of being dropped.
+- **Fixed: folders named Inbox, Sent or Drafts inside other folders took
+  those roles** (#344, reported by bstegmaier75). An archive with an Inbox
+  and a Sent folder for every year moved them all up with the real Inbox,
+  and one of them could be watched for new mail and counted in All
+  Inboxes instead of it. Only the top-level INBOX is the inbox now, and the
+  other roles go by name only at the top level or directly under INBOX.
+- **Added: choosing the single-line list's columns** (#334, requested by
+  erenoglu). Settings → Message List → Columns shows and hides columns and
+  orders them by dragging. Besides the star, sender, subject, tags,
+  paperclip and date there are now Recipients, Correspondents (everyone who
+  wrote in the conversation, filed in other folders included), Importance
+  (from the `X-Priority`, `Importance` and `Priority` headers, or from
+  Microsoft 365), Account, and Due Date, which a Microsoft 365 follow-up
+  flag carries and which takes room only in a list with Microsoft 365 mail.
+  The cache gains importance and due-date columns in place; mail already
+  cached reads as normal importance until it is fetched again. **Column
+  headings** names the columns above the list; clicking one sorts by it,
+  and clicking again reverses the order. Dragging the line at a
+  heading's edge resizes the name and date columns, and a double click on
+  it restores the column's width. The sort menu says "Starred first" where
+  it said "Flagged first". On one line the star and paperclip are smaller.
+- **Fixed: mail syncing could wait forever on a silent IMAP connection**
+  (#324, by Salem Sayed Abdel Gawad). Reads and writes now fail after 60
+  seconds without progress, including reads inside a FETCH response, so the
+  worker reconnects instead of leaving later refreshes queued behind it.
+  Downloads that keep receiving data can take longer, and IMAP IDLE waits
+  keep their own deadlines.
+- **Fixed: the message list redrew itself on every sync** (#330, reported
+  by pdf). Microsoft 365, JMAP and POP3 accounts never stored the
+  preview with the rest of a message, so each sync showed the folder from
+  the cache with every preview blank and then filled them in again from
+  the server. On IMAP, a sync with no new mail still counted as a change
+  whenever the server sent a message without a preview, because the cached
+  one was kept on disk but not in the list the sync produced. Each of these
+  rebuilt the list, and conversation rows forgot their size and newest
+  message until they were scrolled away and back. A quiet sync now changes
+  nothing, a sync with new mail redraws only the rows that changed, and
+  conversation rows keep what they show while it is checked again.
+- **Fixed: Microsoft accounts added with Custom OAuth would have to sign
+  in again after about 90 days.** Microsoft replaces the refresh token on
+  every use, and Hylki kept the first one. It now keeps the new one, and
+  reuses each access token until shortly before it expires instead of
+  asking for a new one for every connection.
+- **Added: Microsoft accounts without GNOME Online Accounts** (#329,
+  requested by erenoglu and yolaws). *Microsoft 365 / Outlook*, in the
+  first-run wizard and in Settings → Mail Accounts, now signs in with
+  Hylki's own Microsoft app in the browser and reads and sends mail
+  through Graph. It works for personal and work accounts, including where
+  GNOME Online Accounts cannot add them (GNOME 46 with personal accounts)
+  or an organization refuses what it asks for. The account's name and
+  address come from the sign-in. A work account whose organization has not
+  approved Hylki is told where its administrator can.
+- **Added: a single-line message list** (#334, requested by erenoglu).
+  Settings → Message List → Layout puts each message on one line, in
+  columns: the sender, the subject with the start of the text dimmed after
+  it, tags, a paperclip, the conversation's size and a short date.
+  Automatic does so only while the list pane is dragged wide, and goes
+  back to cards when it is narrow. A conversation opened out in the list
+  keeps its replies on one line too.
+- **Added: translating messages** (#327, requested by pdf). Settings →
+  Translation takes a DeepL, Google Cloud Translation, Microsoft Translator
+  or LibreTranslate key of your own, and the A文 button in a card's actions,
+  or Translate in the message's right-click menu, shows it in your language, with a banner naming the service and
+  **Show Original** to switch back. What is sent is the message's text,
+  without its styling, images or link addresses, and the translation is
+  shown in the message's own design (in 1.43.0-beta.1 it was shown as
+  Reader View; reported by pdf). Encrypted messages are never sent. **Offer to
+  translate** adds a Translate button to messages in another language,
+  recognised on the computer itself, so nothing is sent until it is pressed.
+  In the composer, the same button beside the format chooser translates what
+  you wrote, or the selection, leaving the quote and signature alone. It
+  offers the language of the message you are answering first, and Ctrl+Z
+  undoes it.
+- **Added: Ctrl+N, Ctrl+R, Ctrl+Shift+R and Ctrl+U** (#328, requested by
+  pdf). They start a new message, reply, reply to all and show the
+  message's source, the keys other mail apps use for these. They work with
+  single-key shortcuts switched off, and are left to the composer while
+  you are writing, where Ctrl+U underlines.
+- **Added: folding messages in a conversation** (#326, requested by pdf).
+  A click on a message's header folds it to one line, as Proton Mail shows
+  them: the sender's circle and name, then whether it is starred, sent or
+  received and has files, and the day. A click on the line opens it again.
+  **Settings → Conversations → Fold earlier messages** opens conversations
+  with the read messages, or all of them, folded but the newest, and the
+  reading pane's right-click menu has Expand All Messages and Collapse All
+  Messages. Printing shows every message in full.
+- **Fixed: quoted text that stayed unfolded, or could not be folded again**
+  (#326, reported by pdf). The reader now finds the quote inside a message
+  wrapped in one outer block, as Outlook and many templates write it, in
+  Outlook desktop's header block, under an "Original Message" divider, in
+  Yahoo replies, and in plain-text mail, where the trailing `>` lines and
+  the "On … wrote:" line above them are folded. Once opened, the ••• button
+  sits where the quote begins, so it closes it again, and opening a quote no
+  longer scrolls the conversation away from it. A forward with nothing
+  written above it is no longer folded down to nothing.
+- **Fixed: a reply written in Markdown started on the quote's "wrote:"
+  line.** The empty line above the quote was lost when the body became
+  Markdown, so whatever was typed first ran into the attribution and was
+  sent as one paragraph with it. The reply now opens on its own line, with a
+  blank line before the quote.
+- **Fixed: a notification could open the window with an empty reading
+  pane** (#332, reported by yioannides). A message shown while the window
+  was hidden, running in the background, could be loaded without ever
+  being painted; it is now loaded again when the window comes back. Mail
+  that had only just arrived when its notification was clicked, before its
+  folder's list was in, is opened once the list has it, instead of the
+  request being dropped.
+- **Fixed: a message could stay marked unread after it was read** (#333,
+  reported by yioannides). Read and star changes found their message by
+  its UID alone, which repeats from folder to folder and, in the unified
+  view, from account to account, so another message took the change; and a
+  conversation's row counted a message from another folder that happened
+  to share a UID. The new-mail notification is now withdrawn when the mail
+  is read inside its conversation, read elsewhere, or when its folder has
+  nothing unread, and a notification left over from an earlier run is
+  withdrawn at startup. Unread counts the server sent while a read was
+  being stored are asked for again once it is.
+- **Updated: Hungarian,** by Laszlo Lang (#320), now complete.
+
 ## 1.43.0-beta.7 — 2026-10-07
 
 The seventh beta previewing 1.43.0.
