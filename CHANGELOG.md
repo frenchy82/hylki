@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.43.2-beta.1 — 2026-10-09
+
+The first beta previewing 1.43.2.
+
+- **Changed: the exported log records what the new-mail sound did** (#337):
+  playing, ready, finished, skipped because the previous one was still
+  playing, switched off, or held back by Do Not Disturb. A sound that still
+  says it is playing after ten seconds no longer silences the ones after it.
+
+## 1.43.1 — 2026-10-09
+
+The new-mail sound plays whatever alert sound GNOME is set to.
+
+- **Fixed: the new-mail sound did not play** (#337, reported by yioannides)
+  when GNOME's own alert sound was set to None in Settings → Sound, although
+  the Play button in Hylki's Settings did. The sound now follows Hylki's own
+  switch alone; in a native install it still stays silent while Do Not
+  Disturb is on. `HYLKI_SHOWCASE_NOTIFY[=<seconds>]` posts the new-mail
+  notification on a timer, for trying the sound and the buttons without
+  waiting for mail.
+
 ## 1.43.1-beta.1 — 2026-10-09
 
 The first beta previewing 1.43.1.
