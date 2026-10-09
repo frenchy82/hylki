@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **Fixed: the new-mail sound did not play** (#337, reported by yioannides)
+  when GNOME's own alert sound was set to None in Settings → Sound, although
+  the Play button in Hylki's Settings did. The sound now follows Hylki's own
+  switch alone; in a native install it still stays silent while Do Not
+  Disturb is on. `HYLKI_SHOWCASE_NOTIFY[=<seconds>]` posts the new-mail
+  notification on a timer, for trying the sound and the buttons without
+  waiting for mail.
+
 ## 1.43.0 — 2026-10-08
 
 Everything from 1.43.0-beta.1 to 1.43.0-beta.7: Microsoft accounts without

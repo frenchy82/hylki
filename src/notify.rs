@@ -126,7 +126,7 @@ pub fn new_mail(
     POSTED.with(|p| p.borrow_mut().insert(account_id, (folder_id, message_id)));
     if let Some(sound) = crate::config::new_mail_sound() {
         if crate::desktop::quiet() {
-            tracing::debug!("new-mail sound: the desktop asks for quiet");
+            tracing::info!("new-mail sound: not played, Do Not Disturb is on");
         } else {
             play_sound(&sound, false);
         }

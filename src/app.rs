@@ -1560,6 +1560,11 @@ pub enum AppMsg {
     /// Showcase only (HYLKI_SHOWCASE_FOLDER): switch to the first account's
     /// folder of this kind, so a capture can start from Drafts, Sent, etc.
     ShowcaseFolder { kind: FolderKind, account: Option<u32> },
+    /// Showcase only (HYLKI_SHOWCASE_NOTIFY): post the new-mail notification
+    /// for the active account's newest Inbox message, focus or not, so the
+    /// notification, its buttons and its sound can be tried without
+    /// waiting for mail (#337).
+    ShowcaseNotify,
     /// Showcase only (HYLKI_SHOWCASE_EDITOR_DIRTY): change the open account
     /// editor, so leaving an edited one can be captured.
     ShowcaseDirtyEditor,
@@ -4337,6 +4342,13 @@ impl SimpleComponent for AppModel {
                 s.input(AppMsg::ShowcaseFolder { kind: FolderKind::Inbox, account });
             });
         }
+        // HYLKI_SHOWCASE_NOTIFY[=<seconds>] posts the new-mail notification
+        // at 5 s or the time given, real accounts included.
+        if let Ok(v) = std::env::var("HYLKI_SHOWCASE_NOTIFY") {
+            let at = v.parse::<u32>().unwrap_or(5);
+            let s = sender.clone();
+            gtk::glib::timeout_add_seconds_local_once(at, move || s.input(AppMsg::ShowcaseNotify));
+        }
         // Timers leave room for the WebViews to load and settle between steps.
         if demo_mode() {
             if let Some(shot) = std::env::var("HYLKI_SHOWCASE").ok() {
@@ -6903,6 +6915,27 @@ impl SimpleComponent for AppModel {
                     .map(|f| (f.id, f.name.clone(), f.path.clone()));
                 if let Some((id, name, path)) = found {
                     self.select_folder(account, id, name, path);
+                }
+            }
+
+            AppMsg::ShowcaseNotify => {
+                let account = self.active_account();
+                let inbox = self
+                    .folders
+                    .get(&account)
+                    .and_then(|fs| fs.iter().find(|f| f.kind == FolderKind::Inbox))
+                    .map(|f| f.id);
+                let newest = inbox.and_then(|f| {
+                    self.message_cache
+                        .get(&(account, f))
+                        .and_then(|ms| ms.iter().max_by_key(|m| m.timestamp))
+                        .map(|m| (f, m.id, m.from_name.clone(), m.subject.clone()))
+                });
+                match newest {
+                    Some((folder, id, from, subject)) => {
+                        crate::notify::new_mail(account, folder, id, &from, &subject, 0, true);
+                    }
+                    None => tracing::warn!("showcase notify: no Inbox message cached for account {account}"),
                 }
             }
 

@@ -68,12 +68,17 @@ fn host_settings(namespace: &str) -> Option<gtk::gio::Settings> {
     Some(gtk::gio::Settings::new(namespace))
 }
 
-/// Whether the desktop wants to stay quiet: GNOME's Do Not Disturb, or
-/// event sounds switched off. Do Not Disturb is not among the settings the
-/// portal shares, so inside the Flatpak only the second can be seen.
+/// Whether the desktop wants to stay quiet: GNOME's Do Not Disturb. It is
+/// not among the settings the portal shares, so inside the Flatpak nothing
+/// can be seen and the answer is no.
+///
+/// GNOME's event-sounds flag, which Settings → Sound → Alert Sound → None
+/// clears, was honoured here too. It silenced the new-mail sound for anyone
+/// who had switched the desktop's alert sound off, which is just who turns
+/// a mail client's own sound on, while the Play button in Settings still
+/// played (#337). The switch in Settings is the person's word on it.
 pub fn quiet() -> bool {
     flag("org.gnome.desktop.notifications", "show-banners") == Some(false)
-        || flag("org.gnome.desktop.sound", "event-sounds") == Some(false)
 }
 
 /// The desktop's monospace font as a Pango description, "Monospace 10"

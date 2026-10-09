@@ -1055,11 +1055,11 @@ and so does the play button. A custom file is copied to
 `~/.local/share/hylki/notification-sound/`, so the original can be moved or
 deleted; the choice is stored in `sound.toml`. The desktop's own sound theme
 is not offered: the Flatpak cannot read the host's sounds. Several accounts
-receiving mail at once play the sound once. It is not played when event
-sounds are switched off in GNOME, or, in a native install, while Do Not
-Disturb is on. The Flatpak cannot see Do Not Disturb: the desktop does not
-share that setting with sandboxed apps. The desktop may play a sound of its
-own for the notification as well; GNOME Settings → Notifications → Hylki →
+receiving mail at once play the sound once. GNOME's own Alert Sound setting
+has no say over it, None included. In a native install it is not played
+while Do Not Disturb is on; the Flatpak cannot see Do Not Disturb, which the
+desktop does not share with sandboxed apps. The desktop may play a sound of
+its own for the notification as well; GNOME Settings → Notifications → Hylki →
 Sound Alerts turns that one off.
 
 ## Privacy
