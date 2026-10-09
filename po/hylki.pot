@@ -3912,6 +3912,14 @@ msgstr ""
 msgid "Sound file"
 msgstr ""
 
+msgid "Also play while Hylki is in front"
+msgstr ""
+
+msgid ""
+"Otherwise the sound comes only with the notification, when the window is in "
+"the background or closed."
+msgstr ""
+
 msgid "Notification Buttons"
 msgstr ""
 

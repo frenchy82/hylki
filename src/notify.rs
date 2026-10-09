@@ -124,6 +124,13 @@ pub fn new_mail(
     }
     send(&mail_id(account_id), &n);
     POSTED.with(|p| p.borrow_mut().insert(account_id, (folder_id, message_id)));
+    sound_for_new_mail();
+}
+
+/// The sound for new mail, if Settings asks for one and the desktop does
+/// not ask for quiet. Part of [`new_mail`]; on its own while the window is
+/// in front, where no notification is posted (#337).
+pub fn sound_for_new_mail() {
     match crate::config::new_mail_sound() {
         None => tracing::debug!("new-mail sound: switched off"),
         Some(_) if crate::desktop::quiet() => {

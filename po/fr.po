@@ -4322,6 +4322,14 @@ msgstr "Lire"
 msgid "Sound file"
 msgstr "Fichier son"
 
+msgid "Also play while Hylki is in front"
+msgstr ""
+
+msgid ""
+"Otherwise the sound comes only with the notification, when the window is in "
+"the background or closed."
+msgstr ""
+
 msgid "Notification Buttons"
 msgstr "Boutons de notification"
 

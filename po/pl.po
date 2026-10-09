@@ -4378,6 +4378,14 @@ msgstr "Odtwórz"
 msgid "Sound file"
 msgstr "Plik dźwiękowy"
 
+msgid "Also play while Hylki is in front"
+msgstr ""
+
+msgid ""
+"Otherwise the sound comes only with the notification, when the window is in "
+"the background or closed."
+msgstr ""
+
 msgid "Notification Buttons"
 msgstr "Przyciski powiadomień"
 

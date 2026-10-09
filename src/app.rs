@@ -6939,7 +6939,7 @@ impl SimpleComponent for AppModel {
                 });
                 match newest {
                     Some((folder, id, from, subject)) => {
-                        crate::notify::new_mail(account, folder, id, &from, &subject, 0, true);
+                        self.announce_new_mail(account, folder, id, &from, &subject, 0, true);
                     }
                     None => tracing::warn!("showcase notify: no Inbox message cached for account {account}"),
                 }
@@ -10089,7 +10089,11 @@ impl SimpleComponent for AppModel {
                 // message on startup. "New" = unread and not in the previous sync.
                 // Mail a filter just filed elsewhere still counts (#47 feedback):
                 // it is new mail even though it never lands in the inbox list.
-                if self.notifications_enabled && !self.window.is_active() {
+                // With the window in front, the sound alone, when Settings asks
+                // for it there (#337): see announce_new_mail.
+                if self.notifications_enabled
+                    && (!self.window.is_active() || crate::config::sound_when_focused())
+                {
                     let is_inbox = self.folder_kind(account_id, folder_id) == Some(FolderKind::Inbox);
                     if let (true, Some(old)) =
                         (is_inbox, self.message_cache.get(&(account_id, folder_id)))
@@ -10114,7 +10118,7 @@ impl SimpleComponent for AppModel {
                             (Some(m), nf)
                                 if nf.is_none_or(|(f, _)| f.timestamp <= m.timestamp) =>
                             {
-                                crate::notify::new_mail(
+                                self.announce_new_mail(
                                     account_id,
                                     folder_id,
                                     m.id,
@@ -10135,7 +10139,7 @@ impl SimpleComponent for AppModel {
                                     .get(&account_id)
                                     .and_then(|fs| fs.iter().find(|f| &f.path == dest_path))
                                     .map_or(folder_id, |f| f.id);
-                                crate::notify::new_mail(
+                                self.announce_new_mail(
                                     account_id,
                                     dest_id,
                                     m.id,
@@ -21272,6 +21276,37 @@ fn sender_label(message: &Message) -> String {
 
 fn demo_mode() -> bool {
     std::env::var_os("HYLKI_DEMO").is_some()
+}
+
+impl AppModel {
+    /// Tell the person about new Inbox mail: the notification, with its
+    /// sound, while the window is in the background or closed; the sound
+    /// alone while it is in front, when Settings asks for that (#337).
+    /// GNOME shows no banner for the app in front, and neither does Hylki.
+    #[allow(clippy::too_many_arguments)]
+    fn announce_new_mail(
+        &self,
+        account_id: u32,
+        folder_id: u32,
+        message_id: u32,
+        from: &str,
+        subject: &str,
+        others: usize,
+        in_place: bool,
+    ) {
+        // HYLKI_SHOWCASE_IN_FRONT (demo) stands in for the focus, which a
+        // window opened from a script never gets.
+        let in_front = self.window.is_active()
+            || (demo_mode() && std::env::var_os("HYLKI_SHOWCASE_IN_FRONT").is_some());
+        if !in_front {
+            crate::notify::new_mail(account_id, folder_id, message_id, from, subject, others, in_place);
+        } else if crate::config::sound_when_focused() {
+            tracing::info!("new mail with the window in front: the sound alone");
+            crate::notify::sound_for_new_mail();
+        } else {
+            tracing::debug!("new mail with the window in front: no notification, no sound");
+        }
+    }
 }
 
 /// The folder a sent copy is filed in (#199): the chosen one when the account
