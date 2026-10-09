@@ -7,6 +7,7 @@
 #
 # Output lands in packaging/out/:
 #   hylki-<ver>-1.fc44.x86_64.rpm       - packaged from the host (Fedora) cargo build
+#                                         (a beta's <ver> is 1.43.0~beta.8)
 #
 # The RPM wraps the host-built release binary. Arch, Debian/Ubuntu and Snap
 # packages were discontinued after 1.7.0: every other distribution is served by
@@ -17,13 +18,16 @@ APP_ID="co.hyprlab.Hylki"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/packaging/out"
 VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)"
+# RPM versions can't hold a dash: a beta's 1.43.0-beta.8 becomes 1.43.0~beta.8,
+# which rpm sorts before 1.43.0, so the stable release replaces the beta.
+RPM_VERSION="${VERSION//-/\~}"
 WHAT="${1:-all}"
 
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
 mkdir -p "$OUT"
 
 # Keep the version in the spec file in lockstep with Cargo.toml
-sed -i "s/^Version:.*/Version:        $VERSION/" "$ROOT/packaging/fedora/hylki.spec"
+sed -i "s/^Version:.*/Version:        $RPM_VERSION/" "$ROOT/packaging/fedora/hylki.spec"
 
 build_rpm() {
     echo "==> Building release binary (host)"
@@ -32,10 +36,14 @@ build_rpm() {
     echo "==> Staging RPM payload"
     local work stage
     work="$(mktemp -d)"
-    stage="$work/hylki-$VERSION-bin"
+    stage="$work/hylki-$RPM_VERSION-bin"
     mkdir -p "$stage/icons/256x256" "$stage/icons/512x512" "$stage/icons/scalable"
     cp "$ROOT/target/release/hylki"              "$stage/hylki"
     cp "$ROOT/LICENSE"                          "$stage/LICENSE"
+    # The dnf repository on hylki.hyprlab.co, so an RPM installed from a
+    # download keeps updating with the rest of the system.
+    cp "$ROOT/packaging/fedora/hylki.repo"      "$stage/hylki.repo"
+    cp "$ROOT/packaging/fedora/hylki-beta.repo" "$stage/hylki-beta.repo"
     # Launcher and metainfo with their translated fields merged in, and a
     # message catalogue per po/<lang>.po (see po/README.md).
     msgfmt --desktop --template="$ROOT/data/$APP_ID.desktop" -d "$ROOT/po" -o "$stage/$APP_ID.desktop"
@@ -53,7 +61,7 @@ build_rpm() {
     mkdir -p "$stage/icons/symbolic"
     cp "$ROOT/data/icons/hicolor/symbolic/apps/co.hyprlab.Hylki-symbolic.svg" "$stage/icons/symbolic/$APP_ID-symbolic.svg"
     mkdir -p "$work/rpmbuild/SOURCES"
-    tar -C "$work" -cf "$work/rpmbuild/SOURCES/hylki-$VERSION-bin.tar" "hylki-$VERSION-bin"
+    tar -C "$work" -cf "$work/rpmbuild/SOURCES/hylki-$RPM_VERSION-bin.tar" "hylki-$RPM_VERSION-bin"
 
     echo "==> rpmbuild"
     rpmbuild -bb --define "_topdir $work/rpmbuild" "$ROOT/packaging/fedora/hylki.spec"

@@ -74,11 +74,12 @@ distribution, on x86_64 and aarch64, and updates come from a signed repository:
 flatpak install --user --from https://hylki.hyprlab.co/flatpak/co.hyprlab.Hylki.flatpakref
 ```
 
-On Fedora you can install the `.rpm` from the
-[latest release](https://github.com/hyprlab/hylki/releases/latest) instead:
+On Fedora you can install the RPM from its signed dnf repository instead, and
+it updates with the rest of the system:
 
 ```sh
-sudo dnf install ./hylki-*.x86_64.rpm
+sudo curl -fsSLo /etc/yum.repos.d/hylki.repo https://hylki.hyprlab.co/rpm/hylki.repo
+sudo dnf install hylki
 ```
 
 Community packages for Gentoo and Nix, direct `.flatpak` downloads and the beta

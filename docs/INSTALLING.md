@@ -31,12 +31,24 @@ flatpak remote-add --user --if-not-exists hylki https://hylki.hyprlab.co/flatpak
 
 ## Fedora
 
-Download the `.rpm` from the
-[latest release](https://github.com/hyprlab/hylki/releases/latest):
+Add the signed dnf repository on hylki.hyprlab.co and install from it. Hylki
+then updates with the rest of the system, through GNOME Software or
+`dnf upgrade`:
 
 ```sh
-sudo dnf install ./hylki-*.x86_64.rpm
+sudo curl -fsSLo /etc/yum.repos.d/hylki.repo https://hylki.hyprlab.co/rpm/hylki.repo
+sudo dnf install hylki
 ```
+
+dnf asks once to trust the repository's signing key, fingerprint
+`91A0 AC23 CFD8 C720 4417 B899 8E9F 3DC1 7CFF B221` (the Flatpak repository's
+key).
+
+The `.rpm` is also attached to each
+[release](https://github.com/hyprlab/hylki/releases/latest). From 1.43.0 the
+package adds the repository itself, so an RPM installed from a download
+keeps updating too; it is the same `/etc/yum.repos.d/hylki.repo`, kept if you
+edit it (set `enabled=0` to stop updates from it).
 
 The RPM targets current Fedora releases (44+) on x86_64 only. On ARM, or on
 anything older, use the Flatpak or [build from source](BUILDING.md).
@@ -65,9 +77,26 @@ nix run github:tbaumann/hylki
 
 ## Beta channel
 
-Betas install alongside the stable app as a separate application
+Flatpak betas install alongside the stable app as a separate application
 (`co.hyprlab.Hylki.Beta`), with their own settings and cache. See
 [hylki.hyprlab.co](https://hylki.hyprlab.co) for the repo address.
+
+On Fedora, betas also come as RPMs from a beta dnf repository. They replace the
+installed `hylki` package rather than sitting beside it, and share its settings.
+Every RPM from 1.43.0 carries the beta repository, switched off; turn it on
+once:
+
+```sh
+sudo dnf config-manager setopt hylki-beta.enabled=1
+sudo dnf upgrade --refresh hylki
+```
+
+A beta version such as `1.44.0~beta.1` sorts before `1.44.0`, so the stable
+release replaces the last beta when it comes out, and the next beta follows it.
+To leave the betas, set `hylki-beta.enabled=0`; dnf won't move back to an older
+version by itself, so run `sudo dnf distro-sync hylki` to return to the
+newest stable. With an RPM older than 1.43.0, add the beta repository with
+`sudo curl -fsSLo /etc/yum.repos.d/hylki-beta.repo https://hylki.hyprlab.co/rpm/hylki-beta.repo`.
 
 ## Other distributions
 

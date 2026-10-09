@@ -74,6 +74,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.43.0" date="2026-10-08">
+      <description>
+        <p>Microsoft accounts without GNOME Online Accounts, templates, Favorites, a single-line message list with columns you choose, translating messages, folding messages in a conversation, more formatting tools, Fastmail and other JMAP servers, printing with page numbers, and right-to-left layout. The RPM now updates through dnf. Russian is complete.</p>
+      </description>
+    </release>
     <release version="1.42.0" date="2026-10-01">
       <description>
         <p>Recipients from LDAP directories, replies and forwards that quote the message as it looks, files dragged onto the window, a sound for new mail, and folders in your own order. The message list stays fast in large folders, new mail arrives promptly after the computer wakes, and messages no longer get stuck on "Loading…". New Polish translation.</p>
