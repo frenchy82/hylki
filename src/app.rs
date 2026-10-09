@@ -4342,12 +4342,18 @@ impl SimpleComponent for AppModel {
                 s.input(AppMsg::ShowcaseFolder { kind: FolderKind::Inbox, account });
             });
         }
-        // HYLKI_SHOWCASE_NOTIFY[=<seconds>] posts the new-mail notification
-        // at 5 s or the time given, real accounts included.
+        // HYLKI_SHOWCASE_NOTIFY[=<seconds>[,<seconds>...]] posts the new-mail
+        // notification at 5 s or at each time given (the same second twice
+        // exercises the sound's hold-off), real accounts included.
         if let Ok(v) = std::env::var("HYLKI_SHOWCASE_NOTIFY") {
-            let at = v.parse::<u32>().unwrap_or(5);
-            let s = sender.clone();
-            gtk::glib::timeout_add_seconds_local_once(at, move || s.input(AppMsg::ShowcaseNotify));
+            let mut times: Vec<u32> = v.split(',').filter_map(|t| t.trim().parse().ok()).collect();
+            if times.is_empty() {
+                times.push(5);
+            }
+            for at in times {
+                let s = sender.clone();
+                gtk::glib::timeout_add_seconds_local_once(at, move || s.input(AppMsg::ShowcaseNotify));
+            }
         }
         // Timers leave room for the WebViews to load and settle between steps.
         if demo_mode() {
