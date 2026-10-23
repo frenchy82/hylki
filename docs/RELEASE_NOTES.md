@@ -2,6 +2,28 @@
 
 Hylki (formerly Vireo) is a clean, fast, GNOME-native email client built with Rust and libadwaita for Wayland desktops. Privacy-first: no telemetry, remote content blocked by default, and credentials kept in the system keyring.
 
+## What's new in 1.46.0-beta.2
+
+### New features:
+
+- Fullscreen on F11, in the main menu, and at start - (#511)
+- Filters forward, mark as read and delete, by @fsoft72 - (#521)
+- A message in a conversation can be dragged to a folder
+- The find bar can open under the message - (#392)
+
+### Fixes:
+
+- Ctrl or Shift and a click on a card selecting only that card
+- deleting several selected cards deleting the whole conversation
+- a click on a message's text not selecting its card
+- the keyboard left in the message list after closing the find bar - (#392)
+- an account's chevron in the sidebar doing nothing
+- a picked LDAP directory showing nobody - (#307)
+
+### Translations:
+
+- French brought up to date by @frenchy82
+
 ## What's new in 1.46.0-beta.1
 
 ### Fixes:

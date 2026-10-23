@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.46.0-beta.2 — 2026-10-23
 
 - **Translations:** French (PR #519 by frenchy82) brought up to date.
 
