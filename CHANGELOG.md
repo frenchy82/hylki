@@ -1,11 +1,97 @@
 # Changelog
 
+## Unreleased
+
+- **Translations:** French (PR #519 by frenchy82) brought up to date.
+
+- **Fixed: a picked LDAP directory showed nobody** (#307, reported by
+  3v1n0). A person whose address was kept in any other book was dropped
+  from the directory's answer. Only the contacts the list shows now hide a
+  directory entry, and Add to Contacts is not offered for someone already
+  kept.
+
+- **Added: fullscreen** (#511). F11, or Fullscreen in the main menu, puts
+  the main window fullscreen and back. Settings → System → Start fullscreen
+  opens it that way at every start. Leaving fullscreen keeps the size and
+  maximized state the window had before.
+
+- **Added: filters can forward, mark as read and delete** (#521, by Fabio
+  Rotondo). The "Then" part of a filter is a list of actions built row by
+  row: Forward to, Mark as Read, Move to and Delete. A forward is the
+  manual Forward's message, sent once per message, and only for mail of the
+  last 30 days that arrived after the Forward was added; older mail is left
+  alone by every action of that rule. Nothing else the rule does happens
+  until the forward has gone: a refused forward is tried again on the next
+  sync, and one waiting in the Outbox holds the original until it is sent.
+  Encrypted mail is never forwarded. Delete erases the message from the
+  server without going through Trash, and cannot be combined with Move.
+
+- **Added: a message in a conversation can be dragged to a folder.** A drag
+  from its header, or from its folded card, carries it to a folder in the
+  sidebar as a drag of its row in the list does, with the same card under
+  the pointer. With several cards selected, the drag carries all of them.
+  The message leaves the conversation, which stays open with the rest.
+
+- **Fixed: Ctrl or Shift and a click on a card selected only that card.**
+  Several cards of a conversation are all its one row in the list, which
+  counted that row once per card, took the mismatch for a selection of its
+  own and handed the reader back a single card. Ctrl or Shift and a click on
+  a folded card no longer opens it either.
+
+- **Fixed: deleting several selected cards deleted the whole conversation.**
+  Archive, Delete, Delete Permanently, Spam and Move to Inbox went to the
+  list, whose one row stands for the whole conversation. They now act on
+  the selected messages, which leave the conversation as a single deleted
+  card does.
+
+- **Fixed: a click on a message's text did not select its card.** In a
+  conversation, only a click on a card's header or its edges selected it.
+  The text sits in a frame that runs no scripts, so the page never heard
+  the click, and a fallback caught it only when the reader already had the
+  keyboard. The reader now catches the click itself and asks the page which
+  card's frame it landed on. A click on a link, or one that ends a text
+  selection, still leaves the selection alone.
+
+- **Added: the find bar can open under the message** (#392, requested by
+  3v1n0). **Settings → Reading → Find bar position** puts it at the top of
+  the message, as before, or at the bottom, where opening it leaves the
+  message where it is. With the attachment drawer showing, the bar sits
+  above the drawer's handle.
+
+- **Fixed: closing the find bar left the keyboard in the message list**
+  (#392, reported by 3v1n0). After Esc or a second Ctrl+F, the list had
+  the focus without showing it, so the next Ctrl+F searched the list
+  instead of the message. Closing the bar now gives the keyboard back to
+  where it was when the bar opened.
+
+- **Fixed: an account's chevron in the sidebar did nothing.** With "Fold
+  accounts with one click" off, only a double click on the header opened or
+  folded an account. The chevron's button sits inside the header's, and a
+  button takes its click in the capture phase, so the header claimed the
+  release before the chevron saw it. The header now hands a click on the
+  chevron to the chevron.
+
 ## 1.46.0-beta.1 — 2026-10-23
 
 - **Changed: the source is split into smaller files.** The 102 source
   files, the largest 29,364 lines, are now 608 grouped by area under `src/`,
   none longer than 1,360 lines. Behaviour is unchanged, and 204 new tests pin
   it. The unused `relm4-components` dependency is gone.
+
+## 1.45.2 — 2026-10-23
+
+A folder the server will not open no longer keeps the CPU busy.
+
+- **Fixed: a folder the server would not open kept the CPU busy** (#512,
+  reported by valqk). The background index put the folder back in its queue
+  after every failed SELECT and tried again at once, logging in afresh each
+  time: hundreds of tries a minute, for good. Dovecot lists a Sieve script's
+  symlink as a folder (`dovecot.sieve`) and answers its SELECT with NO
+  [SERVERBUG], which is how it showed. A folder the server refuses is now
+  left out of the index for the session after one try, and one that fails
+  for any other reason after three tries in a row. The first folder left
+  out is named in the status bar with the server's reason, once a run; the
+  log names every one.
 
 ## 1.45.1 — 2026-10-22
 

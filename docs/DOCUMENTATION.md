@@ -1439,7 +1439,16 @@ inbox for sent or received, a paperclip when it has files, and the day.
 Under it comes the start of the message, in as many lines as **Settings →
 Message List → Preview lines** asks for; the subject is the conversation's,
 in the heading above. A click on the card opens it again; a double-click on
-the header still opens the message in a window of its own.
+the header still opens the message in a window of its own. A click anywhere
+else on a message, its text included, selects it, and the action keys act
+on it. <kbd>Ctrl</kbd> and a click add a message to the selection or take it
+out, and <kbd>Shift</kbd> and a click select every message from the first
+selected to that one, without folding or opening it. Archive, Delete, Spam and Move act on the selected
+messages alone, and the rest of the conversation stays open.
+
+A message's header, or its folded card, drags it to a folder in the sidebar,
+as its row in the message list does; with several selected, the drag carries
+all of them. A drag across the message's text selects the text.
 
 **Settings → Conversations → Fold earlier messages** decides how a
 conversation opens: **Never** shows every message, **Messages already read**
@@ -1496,6 +1505,17 @@ it when the theme changes afterwards, and the switch then reads off if the
 message matches the new theme. In a conversation the choice follows the
 message the conversation was opened on. It works in a message's own window
 too. **Light / Dark Mode switch**, in the same group, hides the switch.
+
+### Finding in a message
+
+<kbd>Ctrl+F</kbd> with the message focused, or the magnifier in the reader's
+toolbar, opens a find bar for the message or conversation shown.
+<kbd>Enter</kbd> and the arrows step through the matches. <kbd>Esc</kbd>,
+<kbd>Ctrl+F</kbd> again or the close button puts the bar away and hands the
+keyboard back to the message, so the next <kbd>Ctrl+F</kbd> finds in it
+again. **Settings → Reading → Find bar position** opens the bar at the top
+of the message, the default, or at the bottom, where it leaves the message
+where it is. A message in its own window follows the same setting.
 
 ### Printing
 

@@ -54,6 +54,8 @@ mod drafts;
 mod events_bodies;
 mod events_folders;
 mod events_messages;
+mod filter_actions;
+mod filter_forward;
 mod filter_run;
 mod filters;
 mod flags;
@@ -141,6 +143,7 @@ relm4::new_stateless_action!(ConsoleAction, WindowActionGroup, "console");
 relm4::new_stateless_action!(FindAction, WindowActionGroup, "find");
 relm4::new_stateless_action!(UndoAction, WindowActionGroup, "undo");
 relm4::new_stateless_action!(RedoAction, WindowActionGroup, "redo");
+relm4::new_stateful_action!(FullscreenAction, WindowActionGroup, "fullscreen", (), bool);
 
 #[relm4::component(pub(crate))]
 impl SimpleComponent for AppModel {

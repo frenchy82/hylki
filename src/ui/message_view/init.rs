@@ -103,6 +103,10 @@ impl MessageView {
             under_split: false,
             find_matches: None,
             find_entry: None,
+            find_return: None,
+            find_bottom: false,
+            find_bar: None,
+            pointer: Default::default(),
             loading_page: None,
             focus_held: std::cell::Cell::new(false),
             find_closed_at: None,
@@ -189,6 +193,7 @@ impl MessageView {
 
     /// The reader's right-click menu (see the comment inside).
     pub(super) fn watch_context_menu(&self, sender: &ComponentSender<Self>) {
+        self.watch_pointer(sender);
         // A right-click anywhere in the reader (a card's header, its body
         // frame, which never reports events to the page, or the space
         // between cards) shows the message's own menu, the same one the list

@@ -38,6 +38,7 @@ impl AppModel {
             fold_messages: self.fold_messages,
             always_show_recipients: self.always_show_recipients,
             pgp_labels: self.pgp_labels,
+            reader_find_bottom: self.reader_find_bottom,
             single_message_card: self.single_message_card,
             reader_mode: self.reader_mode,
             reader_switch: self.reader_switch,
@@ -107,6 +108,7 @@ impl AppModel {
             keep_downloads_days: self.keep_downloads_days,
             run_in_background: self.run_in_background.get(),
             autostart: self.autostart,
+            start_fullscreen: self.start_fullscreen,
             tray: self.tray_enabled,
             tray_icon: self.tray_icon,
             tray_mail: self.tray_mail,
@@ -218,6 +220,8 @@ impl AppModel {
             ));
         self.message_view
             .emit(MessageViewInput::SetPgpLabels(self.pgp_labels));
+        self.message_view
+            .emit(MessageViewInput::SetFindBottom(self.reader_find_bottom));
         self.message_view
             .emit(MessageViewInput::SetSingleMessageCard(
                 self.single_message_card,

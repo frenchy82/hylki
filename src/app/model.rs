@@ -455,6 +455,8 @@ pub(crate) struct AppModel {
     pub(super) run_in_background: std::rc::Rc<std::cell::Cell<bool>>,
     /// Whether Hylki starts at login (background running only).
     pub(super) autostart: bool,
+    /// The window opens fullscreen (#511).
+    pub(super) start_fullscreen: bool,
     /// Tray icon (issue #116): the setting, the icon choice, and the running
     /// item while the setting is on.
     pub(super) tray_enabled: bool,
@@ -527,6 +529,8 @@ pub(crate) struct AppModel {
     pub(super) always_show_recipients: bool,
     /// The OpenPGP chip says its verdict in words (#300).
     pub(super) pgp_labels: bool,
+    /// The reader's find bar opens under the message (#392).
+    pub(super) reader_find_bottom: bool,
     /// Whether the sidebar offers the unified "All Inboxes" section at all.
     pub(super) show_unified_pref: bool,
     /// Whether the collapsed "All Inboxes" row wears its total-unread chip.
@@ -632,6 +636,19 @@ pub(crate) struct AppModel {
     /// (the message still showed up in the last sync). A sync racing the
     /// server-side move must neither re-request the move nor re-notify.
     pub(super) filter_moved: std::collections::HashMap<(u32, u32), std::collections::HashSet<u32>>,
+    /// The messages filters have forwarded, so none goes out twice.
+    pub(super) forwarded_log: config::ForwardedLog,
+    /// Forwards waiting for the body or the files of their message.
+    pub(super) auto_forwards: Vec<super::filter_forward::AutoForward>,
+    /// Keys of the forwards under way (waiting or sent, not yet answered).
+    pub(super) auto_forward_inflight: std::collections::HashSet<String>,
+    /// Send ticket to the forward a filter sent under it.
+    pub(super) auto_forward_tickets:
+        std::collections::HashMap<u64, super::filter_forward::SentForward>,
+    /// Folders other than an Inbox that the filters run over on their next
+    /// load, (account, folder): where a forward a manual run started has
+    /// just gone, so the rest of its rule can follow.
+    pub(super) filter_followups: std::collections::HashSet<(u32, u32)>,
     /// Per (account, folder): the body-search hits of the last sync (#191),
     /// uid → lowercased alternatives the server found in the message. What
     /// [`apply_filters`] consults for "Message body" conditions.

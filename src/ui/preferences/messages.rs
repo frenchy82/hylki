@@ -37,6 +37,8 @@ pub(crate) struct PrefInit {
     pub(crate) always_show_recipients: bool,
     /// The OpenPGP chip says its verdict in words (#300).
     pub(crate) pgp_labels: bool,
+    /// The reader's find bar opens under the message (#392).
+    pub(crate) reader_find_bottom: bool,
     /// Lone messages render as inset cards, like conversation messages.
     pub(crate) single_message_card: bool,
     /// The Light / Dark Mode switch is shown in the reader header (PR #386).
@@ -174,6 +176,7 @@ pub(crate) struct PrefInit {
     pub(crate) keep_downloads_days: u32,
     pub(crate) run_in_background: bool,
     pub(crate) autostart: bool,
+    pub(crate) start_fullscreen: bool,
     pub(crate) tray: bool,
     pub(crate) tray_icon: TrayIcon,
     pub(crate) tray_mail: bool,
@@ -414,6 +417,7 @@ pub(crate) enum PrefOutput {
     SetFoldMessages(crate::config::FoldMessages),
     SetAlwaysShowRecipients(bool),
     SetPgpLabels(bool),
+    SetReaderFindBottom(bool),
     SetSingleMessageCard(bool),
     SetReaderSwitch(bool),
     SetThemeSwitch(bool),
@@ -513,6 +517,7 @@ pub(crate) enum PrefOutput {
     /// Every column back to its own width (#334).
     ResetColumnWidths,
     SetSingleKey(bool),
+    SetStartFullscreen(bool),
     SetGmailKeys(bool),
     /// How many days downloaded mail is kept; 0 keeps it (#394).
     SetKeepDownloads(u32),
